@@ -54,11 +54,7 @@ def invoke(payload):
         # Execute task
         result = agent(user_prompt)
 
-        return {
-            'message': result.message,
-            'timestamp': datetime.now(timezone.utc).isoformat(),
-            'model': 'browser-agent'
-        }
+        return result
 
     except Exception as e:
         return {

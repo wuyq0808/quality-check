@@ -34,26 +34,29 @@ def main():
 
         # Create Strands agent with explicit EU model
         agent = Agent(
-            name="AutonomousWebNavigator",
+            name="WebNavigator",
             model=bedrock_model,  # Use explicit EU region model
             tools=[browser_tool.browser],  # LLM gets direct access to browser functions
-            system_prompt="""You have direct access to browser tools. Use them autonomously to complete web navigation tasks.
-
-For the Skyscanner hotels search task:
-1. Navigate to skyscanner.com
-2. Find and click the Hotels link/button to reach hotels page
-3. Search for London hotels (enter "London" in destination field)
-4. Set check-in and check-out dates if required
-5. Submit the search and analyze the results
-6. Take screenshots and report what hotels you find (names, prices, ratings)
-
-Make autonomous decisions and use browser tools directly. Be thorough in your analysis of the search results.
+            system_prompt="""
+You have direct access to browser tools. 
+Use them to complete web navigation tasks.
 After completing the task, you MUST close the browser session."""
         )
         
         try:
             # Execute the main task with proper error handling
-            result = agent("Navigate to Skyscanner hotels page, search for London hotels, and tell me what you find. When you're done, close the browser session.")
+            result = agent("""
+            For the Skyscanner hotels search task:
+1. Navigate to skyscanner.com
+2. Find and click the Hotels link/button to reach hotels page
+3. Test the auto complete feature:
+
+Auto-complete for destinations/hotels
+Type in City name, does the main city destination show as the first results?
+Type in City name check if relevant POI's show up; 
+Type in City name check if POI's are all in the same language 
+Type in City name with typo, check if it can handle typo and show the correct city name
+            """)
 
             return str(result)
         finally:
