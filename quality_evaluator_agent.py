@@ -33,104 +33,57 @@ def create_quality_evaluator():
         tools=[],  # No tools - pure prompt-based agent
         system_prompt="""
 You are a quality evaluation specialist that helps generate comprehensive website feature evaluation tasks.
+## Output Template
+| Test   | Skyscanner | Booking.com |
+|-----------|-----------------------------|-------------------------------|
+| Test 1 | 6/7 – Rationale              | 5/7 – Rationale                |
+| Test 2 | 6/7 – Rationale             | 5/7 – Rationale                |
+### Summary
+- **Skyscanner**  
+  - standout strengths  
+  - drawbacks  
+- **Booking.com**  
+  - standout strengths  
+  - drawbacks  
 """
     )
 
     return agent
 
 
-def evaluate_website_quality(website_url, user_request):
-    """
-    Evaluate website quality by generating evaluation prompts and invoking browser testing
-
-    Args:
-        website_url (str): The website URL to evaluate
-        user_request (str): User's description of what to evaluate
-
-    Returns:
-        dict: Combined evaluation results
-    """
-    try:
-        # Create the quality evaluator agent
-        evaluator = create_quality_evaluator()
-
-        # Generate detailed evaluation prompt
-        prompt_generation_task = f"""
-        Generate a comprehensive feature evaluation description for testing this website: {website_url}
-
-        User request: {user_request}
-
-        Create detailed test steps that include:
-        1. Navigation steps
-        2. Specific interactions to test
-        3. Expected behaviors to verify
-        4. Edge cases to check
-        5. Usability aspects to evaluate
-
-        Format your response as a clear, step-by-step testing guide that can be executed by an automated browser agent.
-        """
-
-        print("🤖 Generating evaluation criteria...")
-        evaluation_criteria = evaluator(prompt_generation_task)
-
-        print("🌐 Executing browser-based evaluation...")
-        # Invoke the browser evaluation method
-        browser_results = evaluate_website_feature(website_url, str(evaluation_criteria))
-
-        # Combine results
-        results = {
-            "website_url": website_url,
-            "user_request": user_request,
-            "evaluation_criteria": str(evaluation_criteria),
-            "browser_evaluation": browser_results,
-            "timestamp": datetime.now().isoformat()
-        }
-
-        return results
-
-    except Exception as e:
-        error_msg = f"Quality evaluation failed: {str(e)}"
-        print(f"❌ {error_msg}")
-        return {
-            "status": "error",
-            "error": error_msg,
-            "website_url": website_url,
-            "user_request": user_request,
-            "timestamp": datetime.now().isoformat()
-        }
 
 
 if __name__ == "__main__":
     import concurrent.futures
     from strands_browser_direct import evaluate_website_feature
 
-    # Use the same feature description from strands_browser_direct.py
-    feature_description = """
+    # User request for evaluation
+    user_request = """
     Test the auto-complete feature for hotel destinations:
-1. Find and click the Hotels link/button to reach hotels page
-2. Test the auto complete feature:
+- Close any pop-ups/modals/overlays if they appear
+- Find the search box for hotel destinations
+- Tests:
 
-Auto-complete for destinations/hotels
-Type in City name, does the main city destination show as the first results?
-Type in City name check if relevant POI's show up; 
-Type in City name check if POI's are all in the same language 
-Type in City name with typo, check if it can handle typo and show the correct city name
+1. Type in City name, does the main city destination show as the first results?
+2. Type in City name check if relevant POI's show up;
+3. Type in City name check if POI's are all in the same language
+4. Type in City name with typo, check if it can handle typo and show the correct city name
     """
 
     # Test two different websites in parallel
     websites = [
-        "https://www.skyscanner.com",
+        "https://www.skyscanner.com/hotels",
         "https://www.booking.com"
     ]
 
     print("🎯 Starting parallel evaluation of hotel auto-complete features...")
     print("=" * 60)
 
-    # Execute evaluations in parallel
+    # Execute evaluations in parallel - call evaluate_website_feature directly with user_request
     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
         # Submit both tasks
         future_to_website = {
-            executor.submit(evaluate_website_feature, website, feature_description): website
+            executor.submit(evaluate_website_feature, website, user_request): website
             for website in websites
         }
 
@@ -170,7 +123,7 @@ Type in City name with typo, check if it can handle typo and show the correct ci
             f.write(f"**Feature Tested:** Hotel Auto-complete\n\n")
             f.write("## Test Description\n\n")
             f.write("```\n")
-            f.write(feature_description.strip())
+            f.write(user_request.strip())
             f.write("\n```\n\n")
             f.write("## Evaluation Results\n\n")
 
@@ -195,11 +148,6 @@ Type in City name with typo, check if it can handle typo and show the correct ci
     Website 2: {websites[1]}
     Results 2: {results[websites[1]]}
 
-    Provide a comprehensive comparison analysis including:
-    1. Which website performs better overall
-    2. Specific strengths and weaknesses of each
-    3. Recommendations for improvement
-    4. Final comparative rating
     """
 
     comparison_result = evaluator(comparison_prompt)

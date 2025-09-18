@@ -46,6 +46,7 @@ def evaluate_website_feature(website_url, feature_description):
             tools=[browser_tool.browser],  # LLM gets direct access to browser functions
             system_prompt="""
 You have direct access to browser tools. Use them to complete web navigation tasks.
+You must try more then enough variations to be sure
 Be detailed and consistent in the response.
 Rating Definition
 1 – Terrible
