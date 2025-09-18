@@ -11,42 +11,28 @@ from strands import Agent
 from strands.models import BedrockModel
 from strands_tools.browser import AgentCoreBrowser
 
-def evaluate_website_feature(website_url, feature_description):
-    """
-    Evaluate a specific website feature using Strands agent with direct browser tool access
-
-    Args:
-        website_url (str): The URL of the website to evaluate
-        feature_description (str): Description of the feature to test and evaluate
-
-    Returns:
-        str: Evaluation results in markdown format
-    """
+def evaluate_website_feature(website_urls, feature_description):
     try:
-        # Configure browser tool with AgentCore using new S3 recording browser
-        # Note: Recording is enabled with S3 storage in us-east-1
         custom_browser_id = "recordingBrowserWithS3_20250916170045-Ec92oniUSi"
-        session_name = "skyscanner-london-hotels"  # Define session name for proper cleanup
         browser_tool = AgentCoreBrowser(
             region='us-east-1',
             identifier=custom_browser_id,
             session_timeout=1800
         )
         
-        # Create explicit Bedrock model with EU region (matching your AWS config)
         bedrock_model = BedrockModel(
             model_id="eu.anthropic.claude-sonnet-4-20250514-v1:0",
             region_name="eu-west-1"
         )
 
-        # Create Strands agent with explicit EU model
         agent = Agent(
             name="WebNavigator",
-            model=bedrock_model,  # Use explicit EU region model
-            tools=[browser_tool.browser],  # LLM gets direct access to browser functions
+            model=bedrock_model,
+            tools=[browser_tool.browser],
             system_prompt="""
 You have direct access to browser tools. Use them to complete web navigation tasks.
-You must try more then enough variations to be sure
+You must visit the sites IN SEPERATE BROWSER TABS/WINDOWS. Rate and compare the sites on the requested case.
+
 Be detailed and consistent in the response.
 Rating Definition
 1 - Terrible
@@ -65,22 +51,22 @@ Polished and competitive
 Best-in-class; highly competitive
 
 OUTPUT in MARKDOWN with the following structure:
-| Feature   | [Website] | 
-|-----------|-----------------------------|
-| Feature 1 | 6/7 - Rational              |
-| Feature 2 | 6/7 - Rational              |
-### Summary
+| Test Cases   | [Website 1] | [Website 2] |
+|-----------|-----------------------------|-----------------------------|
+| Test Case | 6/7 - Rationale              | 6/7 - Rationale |
+### Summary - Focus on the test case
+[Website 1]
+- standout strengths  
+- drawbacks  
+[Website 2]
 - standout strengths  
 - drawbacks  
 """
         )
 
-        # Execute the website feature evaluation task
         result = agent(f"""
-Navigate to {website_url} and evaluate the following feature:
-
+Open {website_urls} IN SEPERATE BROWSER TABS/WINDOWS evaluate the following feature:
 {feature_description}
-
 Please test thoroughly and provide detailed feedback using the rating system.
         """)
 
@@ -93,24 +79,29 @@ Please test thoroughly and provide detailed feedback using the rating system.
 
 if __name__ == "__main__":
     # Example usage
-    website_url = "https://www.skyscanner.com"
+    website_urls = [
+        "https://www.skyscanner.com/hotels",
+        "https://www.booking.com"
+    ]
     feature_description = """
     Test the auto-complete feature for hotel destinations:
-1. Find and click the Hotels link/button to reach hotels page
-2. Test the auto complete feature:
+- For booking.com, will be a overlay modal about Sign In. Must find it and Click the X button on the top right to close it.
+- Find the search box for hotel destinations
 
-Auto-complete for destinations/hotels
-Type in City name, does the main city destination show as the first results?
-Type in City name check if relevant POI's show up; 
-Type in City name check if POI's are all in the same language 
+Test case: (You must try more then enough variations to be sure)
 Type in City name with typo, check if it can handle typo and show the correct city name
     """
 
-    result = evaluate_website_feature(website_url, feature_description)
+    result = evaluate_website_feature(str(website_urls), feature_description)
 
-    print(result)
+    # Write result to markdown file
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"website_evaluation_{timestamp}.md"
+
+    with open(filename, 'w') as f:
+        f.write(str(result))
 
     if result and "error" not in str(result).lower():
-        print(f"\n🎉 SUCCESS: Strands Agent with custom browser completed!")
+        print(f"\n🎉 SUCCESS: Sites completed! Output saved to {filename}")
     else:
         print(f"❌ Error occurred")
