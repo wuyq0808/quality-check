@@ -11,18 +11,18 @@ from strands import Agent
 from strands.models import BedrockModel
 from strands_tools.browser import AgentCoreBrowser
 
-def evaluate_website_feature(website_urls, feature_description):
+def evaluate_website_feature(website_urls, user_prompt):
     try:
-        custom_browser_id = "recordingBrowserWithS3_20250916170045-Ec92oniUSi"
         browser_tool = AgentCoreBrowser(
             region='us-east-1',
-            identifier=custom_browser_id,
-            session_timeout=1800
+            identifier="recordingBrowserWithS3_20250916170045-Ec92oniUSi",
+            session_timeout=900,  # 15 minutes
         )
         
         bedrock_model = BedrockModel(
             model_id="eu.anthropic.claude-sonnet-4-20250514-v1:0",
-            region_name="eu-west-1"
+            region_name="eu-west-1",
+            temperature=0.1
         )
 
         agent = Agent(
@@ -30,8 +30,9 @@ def evaluate_website_feature(website_urls, feature_description):
             model=bedrock_model,
             tools=[browser_tool.browser],
             system_prompt="""
-You have direct access to browser tools. Use them to complete web navigation tasks.
-You must visit the sites IN SEPERATE BROWSER TABS/WINDOWS. Rate and compare the sites on the requested case.
+You are a senior product manager. You have direct access to browser tools. Use them to complete web navigation tasks.
+You must visit the sites in seperate browser tabs. Rate and compare the sites on the requested case.
+Always take screenshots for input.
 
 Be detailed and consistent in the response.
 Rating Definition
@@ -50,24 +51,23 @@ Polished and competitive
 7 - Excellent
 Best-in-class; highly competitive
 
-OUTPUT in MARKDOWN with the following structure:
-| Test Cases   | [Website 1] | [Website 2] |
+Output in markdown with the following structure:
+| Cases | [Website 1] | [Website 2] |
 |-----------|-----------------------------|-----------------------------|
-| Test Case | 6/7 - Rationale              | 6/7 - Rationale |
-### Summary - Focus on the test case
+| Case | 6/7 - Rationale              | 6/7 - Rationale |
+### Summary
 [Website 1]
 - standout strengths  
 - drawbacks  
 [Website 2]
 - standout strengths  
-- drawbacks  
+- drawbacks
 """
         )
 
         result = agent(f"""
-Open {website_urls} IN SEPERATE BROWSER TABS/WINDOWS evaluate the following feature:
-{feature_description}
-Please test thoroughly and provide detailed feedback using the rating system.
+Open {website_urls} and evaluate the following feature:
+{user_prompt}
         """)
 
         return str(result)
@@ -81,18 +81,21 @@ if __name__ == "__main__":
     # Example usage
     website_urls = [
         "https://www.skyscanner.com/hotels",
-        "https://www.booking.com"
+        "https://www.booking.com",
     ]
-    feature_description = """
-    Test the auto-complete feature for hotel destinations:
-- For booking.com, will be a overlay modal about Sign In. Must find it and Click the X button on the top right to close it.
-- Find the search box for hotel destinations
+    user_prompt = """
+For booking.com, there may be an overlay modal about Sign In. Use screenshot to find it, and MUST close it by Clicking the close button: <button aria-label="Dismiss sign-in info." type="button" class="de576f5064 b46cd7aad7 e26a59bb37 c295306d66 c7a901b0e7 daf5d4cb1c"><span class="ec1ff2f0cb"><span class="fc70cba028 ca6ff50764" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="50px"><path d="m13.31 12 6.89-6.89a.93.93 0 1 0-1.31-1.31L12 10.69 5.11 3.8A.93.93 0 0 0 3.8 5.11L10.69 12 3.8 18.89a.93.93 0 0 0 1.31 1.31L12 13.31l6.89 6.89a.93.93 0 1 0 1.31-1.31z"></path></svg></span></span></button>
 
-Test case: (You must try more then enough variations to be sure)
-Type in City name with typo, check if it can handle typo and show the correct city name
+Find the search box for hotel destinations, test the auto complete feature on it.
+
+Cases: (MUST try more then enough variations to be sure; MUST check large amount of typo likely to be made by users)
+1. Type in City name, does the main city destination show as the first results?
+2. Type in City name check if relevant POI's show up;
+3. Type in City name check if POI's are all in the same language
+4. Type in City name with typo, check if it can handle typo and show the correct city name
     """
 
-    result = evaluate_website_feature(str(website_urls), feature_description)
+    result = evaluate_website_feature(str(website_urls), user_prompt)
 
     # Write result to markdown file
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -100,8 +103,3 @@ Type in City name with typo, check if it can handle typo and show the correct ci
 
     with open(filename, 'w') as f:
         f.write(str(result))
-
-    if result and "error" not in str(result).lower():
-        print(f"\n🎉 SUCCESS: Sites completed! Output saved to {filename}")
-    else:
-        print(f"❌ Error occurred")
