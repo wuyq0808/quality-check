@@ -157,3 +157,16 @@ Temporary Items
 screenshots/
 recording_config.json
 website_evaluation_*.md
+
+# Temporary files
+/tmp/
+*.tmp
+*.temp
+
+# Lambda deployment packages
+*.zip
+
+# AWS credentials and config
+.aws/
+credentials
+config

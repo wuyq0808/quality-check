@@ -1,0 +1,275 @@
+openapi: 3.0.0
+info:
+  title: Browser Action API
+  description: API for browser automation through AgentCore Browser tool
+  version: 1.0.0
+
+paths:
+  /browser/navigate:
+    post:
+      summary: Navigate to a URL
+      description: Navigate to a specified URL and wait for page load
+      operationId: navigateToUrl
+      parameters:
+        - name: url
+          in: query
+          required: true
+          description: The URL to navigate to
+          schema:
+            type: string
+            format: uri
+        - name: session_id
+          in: query
+          required: false
+          description: Optional session ID for continuity
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successfully navigated to URL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BrowserResponse'
+
+  /browser/click:
+    post:
+      summary: Click an element
+      description: Click on a specified element on the page
+      operationId: clickElement
+      parameters:
+        - name: url
+          in: query
+          required: true
+          description: The URL of the page
+          schema:
+            type: string
+            format: uri
+        - name: selector
+          in: query
+          required: true
+          description: CSS selector or XPath of element to click
+          schema:
+            type: string
+        - name: session_id
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successfully clicked element
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BrowserResponse'
+
+  /browser/fill-form:
+    post:
+      summary: Fill out a form
+      description: Fill form fields with provided data
+      operationId: fillForm
+      parameters:
+        - name: url
+          in: query
+          required: true
+          description: The URL of the form page
+          schema:
+            type: string
+            format: uri
+        - name: session_id
+          in: query
+          required: false
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                form_data:
+                  type: object
+                  description: Key-value pairs of form field names and values
+                  additionalProperties:
+                    type: string
+                submit:
+                  type: boolean
+                  description: Whether to submit the form after filling
+                  default: true
+      responses:
+        '200':
+          description: Successfully filled form
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BrowserResponse'
+
+  /browser/extract:
+    post:
+      summary: Extract data from page
+      description: Extract specified data from a web page
+      operationId: extractData
+      parameters:
+        - name: url
+          in: query
+          required: true
+          description: The URL to extract data from
+          schema:
+            type: string
+            format: uri
+        - name: extract_query
+          in: query
+          required: true
+          description: What to extract from the page
+          schema:
+            type: string
+        - name: session_id
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successfully extracted data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BrowserResponse'
+
+  /browser/screenshot:
+    post:
+      summary: Take a screenshot
+      description: Capture a screenshot of the page or specific element
+      operationId: takeScreenshot
+      parameters:
+        - name: url
+          in: query
+          required: true
+          description: The URL to screenshot
+          schema:
+            type: string
+            format: uri
+        - name: element
+          in: query
+          required: false
+          description: Optional CSS selector for specific element
+          schema:
+            type: string
+        - name: session_id
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successfully captured screenshot
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BrowserResponse'
+
+  /browser/search:
+    post:
+      summary: Search on page
+      description: Find search box, enter query, and submit
+      operationId: searchOnPage
+      parameters:
+        - name: url
+          in: query
+          required: true
+          description: The URL with search functionality
+          schema:
+            type: string
+            format: uri
+        - name: search_query
+          in: query
+          required: true
+          description: The search query to enter
+          schema:
+            type: string
+        - name: session_id
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successfully performed search
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BrowserResponse'
+
+  /browser/multi-step:
+    post:
+      summary: Execute multiple steps
+      description: Perform a sequence of browser actions
+      operationId: executeMultipleSteps
+      parameters:
+        - name: url
+          in: query
+          required: true
+          description: The starting URL
+          schema:
+            type: string
+            format: uri
+        - name: session_id
+          in: query
+          required: false
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                steps:
+                  type: array
+                  description: Array of steps to execute
+                  items:
+                    type: object
+                    properties:
+                      action:
+                        type: string
+                        enum: [click, fill, wait, scroll, extract]
+                      selector:
+                        type: string
+                        description: Element selector (for click, fill)
+                      value:
+                        type: string
+                        description: Value to input (for fill)
+                      wait_time:
+                        type: integer
+                        description: Time to wait in seconds (for wait)
+      responses:
+        '200':
+          description: Successfully executed all steps
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BrowserResponse'
+
+components:
+  schemas:
+    BrowserResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Whether the action was successful
+        session_id:
+          type: string
+          description: Session ID for continuity
+        data:
+          type: string
+          description: Result data from the browser action
+        message:
+          type: string
+          description: Status message
+        error:
+          type: string
+          description: Error message if action failed
