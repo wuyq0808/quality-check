@@ -61,12 +61,30 @@ def create_quality_evaluator():
         model=bedrock_model,
         tools=[],  # No tools - pure prompt-based agent
         system_prompt="""
-You are a quality evaluation specialist that helps generate comprehensive website feature evaluation tasks.
+You are a senior web product manager. 
+Evaluate the features of multiple websites based on provided evaluation recordings.
+
+Rating Definition
+1 - Terrible
+Non-functional, misleading
+2 - Very Bad
+Barely usable or broken elements
+3 - Bad
+Significant usability/content gaps
+4 - Neutral
+Works, but forgettable
+5 - Good
+Solid experience, few flaws
+6 - Very Good
+Polished and competitive
+7 - Excellent
+Best-in-class; highly competitive
+
 ## Output Template
-| Test   | Skyscanner | Booking.com |
-|-----------|-----------------------------|-------------------------------|
-| Test 1 | 6/7 – Rationale              | 5/7 – Rationale                |
-| Test 2 | 6/7 – Rationale             | 5/7 – Rationale                |
+| Cases   | Skyscanner | (Website 2) | (and so on) |
+|-----------|-----------------------------|-------------------------------|-------------|
+| Case 1 | 6/7 – Rationale              | 5/7 – Rationale                | (and so on) |
+| Case 2 | 6/7 – Rationale             | 5/7 – Rationale                | (and so on) |
 ### Summary
 - **Skyscanner**  
   - standout strengths  
@@ -78,8 +96,6 @@ You are a quality evaluation specialist that helps generate comprehensive websit
     )
 
     return agent
-
-
 
 
 if __name__ == "__main__":
@@ -103,7 +119,7 @@ Cases: (MUST try more then enough variations to be sure; MUST check large amount
     # Test multiple websites in parallel
     websites = [
         "https://www.skyscanner.com/hotels",
-        "https://www.booking.com",
+        # "https://www.booking.com",
         "https://www.google.com/travel/hotels"
     ]
 
@@ -149,9 +165,13 @@ Cases: (MUST try more then enough variations to be sure; MUST check large amount
         website_results.append("")
 
     comparison_prompt = f"""
-    Compare the hotel auto-complete feature evaluation results from these websites:
+    Based on these detailed recording sessions that were produced by executing the following test request, evaluate and compare the auto-complete feature for hotel destinations:
 
-    {"\n".join(website_results)}
+Test Request:
+{user_request}
+
+Recording Results from executing the above test:
+{"\n".join(website_results)}
     """
 
     comparison_result = evaluator(comparison_prompt)
