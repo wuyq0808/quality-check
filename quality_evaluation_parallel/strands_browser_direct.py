@@ -86,6 +86,7 @@ Focus on comprehensive documentation - another agent will use your detailed reco
         )
 
         # Execute the website feature evaluation task
+        print(f"🔍 Starting recording session for: {website_url}")
         result = agent(f"""
 Navigate to {website_url} and evaluate the following feature:
 
@@ -100,27 +101,3 @@ Please test thoroughly and document all your observations.
         error_msg = f"Strands browser tool implementation failed: {str(e)}"
         print(f"❌ {error_msg}")
         return {'status': 'error', 'error': error_msg}
-
-if __name__ == "__main__":
-    # Example usage
-    website_url = "https://www.skyscanner.com"
-    feature_description = """
-    Test the auto-complete feature for hotel destinations:
-1. Find and click the Hotels link/button to reach hotels page
-2. Test the auto complete feature:
-
-Auto-complete for destinations/hotels
-Type in City name, does the main city destination show as the first results?
-Type in City name check if relevant POI's show up; 
-Type in City name check if POI's are all in the same language 
-Type in City name with typo, check if it can handle typo and show the correct city name
-    """
-
-    result = evaluate_website_feature(website_url, feature_description)
-
-    print(result)
-
-    if result and "error" not in str(result).lower():
-        print(f"\n🎉 SUCCESS: Strands Agent with custom browser completed!")
-    else:
-        print(f"❌ Error occurred")

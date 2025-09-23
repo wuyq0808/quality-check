@@ -103,31 +103,49 @@ if __name__ == "__main__":
     from strands_browser_direct import evaluate_website_feature
 
     # User request for evaluation
+#     user_request = """
+#     Test and record interactions with the auto-complete feature for hotel destinations:
+# For booking.com, there may be an overlay modal about Sign In. Use screenshot to find it, and MUST close it by Clicking the close button: <button aria-label="Dismiss sign-in info." type="button" class="de576f5064 b46cd7aad7 e26a59bb37 c295306d66 c7a901b0e7 daf5d4cb1c"><span class="ec1ff2f0cb"><span class="fc70cba028 ca6ff50764" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="50px"><path d="m13.31 12 6.89-6.89a.93.93 0 1 0-1.31-1.31L12 10.69 5.11 3.8A.93.93 0 0 0 3.8 5.11L10.69 12 3.8 18.89a.93.93 0 0 0 1.31 1.31L12 13.31l6.89 6.89a.93.93 0 1 0 1.31-1.31z"></path></svg></span></span></button>
+
+# Find the search box for hotel destinations, record all interactions with the auto complete feature.
+
+# Cases: (MUST try more then enough variations to be sure; MUST check large amount of typo likely to be made by users)
+# 1. Type in City name, does the main city destination show as the first results?
+# 2. Type in City name check if relevant POI's show up;
+# 3. Type in City name check if POI's are all in the same language
+# 4. Type in City name with typo, check if it can handle typo and show the correct city name
+#     """
+
     user_request = """
-    Evaluate the auto-complete feature for hotel destinations:
 For booking.com, there may be an overlay modal about Sign In. Use screenshot to find it, and MUST close it by Clicking the close button: <button aria-label="Dismiss sign-in info." type="button" class="de576f5064 b46cd7aad7 e26a59bb37 c295306d66 c7a901b0e7 daf5d4cb1c"><span class="ec1ff2f0cb"><span class="fc70cba028 ca6ff50764" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="50px"><path d="m13.31 12 6.89-6.89a.93.93 0 1 0-1.31-1.31L12 10.69 5.11 3.8A.93.93 0 0 0 3.8 5.11L10.69 12 3.8 18.89a.93.93 0 0 0 1.31 1.31L12 13.31l6.89 6.89a.93.93 0 1 0 1.31-1.31z"></path></svg></span></span></button>
 
-Find the search box for hotel destinations, test the auto complete feature on it.
+Steps:
+1. Find the destination input, 
+2. For Google Hotels and agoda, type Barcelona, and select the most relevant auto suggested option.
+3. For Skyscanner, type Barcelona, then Click search button.
+3. wait for the search result.
+Intent Alignment Check: Verify that the top listings align with user intent (e.g. centrally located, well-reviewed, reasonably priced options appear first).
 
-Cases: (MUST try more then enough variations to be sure; MUST check large amount of typo likely to be made by users)
-1. Type in City name, does the main city destination show as the first results?
-2. Type in City name check if relevant POI's show up;
-3. Type in City name check if POI's are all in the same language
-4. Type in City name with typo, check if it can handle typo and show the correct city name
+Cases:
+1. Review Score Relevance Check: Confirm that top listings include hotels with strong guest scores unless filters or sorting override it.
+2. Star Rating vs Price Balance Check: Ensure that the first few listings represent a healthy mix of quality (e.g. 3–5 star) and value, rather than skewing too heavily toward one end.
+3. Repeat Search Consistency Check: Repeat the same search multiple times and check if the top listings remain consistent unless filters, sort, or availability changes.
+4. Local Context Appropriateness Check: For destination-specific searches (e.g. Tokyo city center), verify that top listings are contextually appropriate (e.g. located in Shinjuku rather than suburban outskirts).
     """
 
     # Test multiple websites in parallel
     websites = [
+        "https://www.agoda.com",
+        "https://www.google.com/travel/hotels",
+        "https://www.booking.com",
+        # "https://www.expedia.com", # has anti-bot puzzle
         "https://www.skyscanner.com/hotels",
-        # "https://www.booking.com",
-        "https://www.google.com/travel/hotels"
     ]
-
     print("🎯 Starting parallel evaluation of hotel auto-complete features...")
     print("=" * 60)
 
     # Execute evaluations in parallel - call evaluate_website_feature directly with user_request
-    with concurrent.futures.ThreadPoolExecutor(max_workers=len(websites)) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
         # Submit both tasks
         future_to_website = {
             executor.submit(evaluate_website_feature, website, user_request): website
