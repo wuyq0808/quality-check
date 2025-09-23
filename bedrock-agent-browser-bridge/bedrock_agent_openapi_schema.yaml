@@ -1,16 +1,105 @@
 openapi: 3.0.0
 info:
-  title: Browser Action API
-  description: API for browser automation through AgentCore Browser tool
-  version: 1.0.0
+  title: AgentCore Browser Bridge API
+  description: Complete API for browser automation through AgentCore Browser tool - Full mapping of all 19 browser actions
+  version: 2.0.0
 
 paths:
+  # Session Management Actions
+  /browser/init-session:
+    post:
+      summary: Initialize browser session
+      description: Create a new browser session for automation tasks
+      operationId: initSession
+      parameters:
+        - name: session_name
+          in: query
+          required: true
+          description: Unique name for the browser session
+          schema:
+            type: string
+            pattern: "^[a-z0-9-]+$"
+            minLength: 10
+            maxLength: 36
+        - name: description
+          in: query
+          required: true
+          description: Description of what this session will be used for
+          schema:
+            type: string
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [init_session]
+      responses:
+        '200':
+          description: Session initialized successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BrowserResponse'
+
+  /browser/list-sessions:
+    get:
+      summary: List active sessions
+      description: Get all active browser sessions
+      operationId: listLocalSessions
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [list_local_sessions]
+      responses:
+        '200':
+          description: Sessions listed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BrowserResponse'
+
+  /browser/close-session:
+    post:
+      summary: Close browser session
+      description: Close and cleanup a specific browser session
+      operationId: closeSession
+      parameters:
+        - name: session_name
+          in: query
+          required: true
+          description: Name of the session to close
+          schema:
+            type: string
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [close]
+      responses:
+        '200':
+          description: Session closed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BrowserResponse'
+
+  # Navigation Actions
   /browser/navigate:
     post:
-      summary: Navigate to a URL
+      summary: Navigate to URL
       description: Navigate to a specified URL and wait for page load
       operationId: navigateToUrl
       parameters:
+        - name: session_name
+          in: query
+          required: true
+          description: Browser session name
+          schema:
+            type: string
         - name: url
           in: query
           required: true
@@ -18,12 +107,27 @@ paths:
           schema:
             type: string
             format: uri
-        - name: session_id
+        - name: wait_until
           in: query
           required: false
-          description: Optional session ID for continuity
+          description: When to consider navigation complete
           schema:
             type: string
+            enum: [load, domcontentloaded, networkidle]
+            default: load
+        - name: timeout
+          in: query
+          required: false
+          description: Navigation timeout in milliseconds
+          schema:
+            type: integer
+            default: 30000
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [navigate]
       responses:
         '200':
           description: Successfully navigated to URL
@@ -32,30 +136,112 @@ paths:
               schema:
                 $ref: '#/components/schemas/BrowserResponse'
 
+  /browser/refresh:
+    post:
+      summary: Refresh page
+      description: Refresh the current page
+      operationId: refreshPage
+      parameters:
+        - name: session_name
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [refresh]
+      responses:
+        '200':
+          description: Page refreshed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BrowserResponse'
+
+  /browser/back:
+    post:
+      summary: Navigate back
+      description: Go back in browser history
+      operationId: navigateBack
+      parameters:
+        - name: session_name
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [back]
+      responses:
+        '200':
+          description: Navigated back successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BrowserResponse'
+
+  /browser/forward:
+    post:
+      summary: Navigate forward
+      description: Go forward in browser history
+      operationId: navigateForward
+      parameters:
+        - name: session_name
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [forward]
+      responses:
+        '200':
+          description: Navigated forward successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BrowserResponse'
+
+  # Interaction Actions
   /browser/click:
     post:
-      summary: Click an element
+      summary: Click element
       description: Click on a specified element on the page
       operationId: clickElement
       parameters:
-        - name: url
+        - name: session_name
           in: query
           required: true
-          description: The URL of the page
           schema:
             type: string
-            format: uri
         - name: selector
           in: query
           required: true
           description: CSS selector or XPath of element to click
           schema:
             type: string
-        - name: session_id
+        - name: wait_time
           in: query
           required: false
+          description: Time to wait after click in milliseconds
+          schema:
+            type: integer
+            default: 1000
+        - name: action
+          in: query
+          required: true
           schema:
             type: string
+            enum: [click]
       responses:
         '200':
           description: Successfully clicked element
@@ -64,75 +250,134 @@ paths:
               schema:
                 $ref: '#/components/schemas/BrowserResponse'
 
-  /browser/fill-form:
+  /browser/type:
     post:
-      summary: Fill out a form
-      description: Fill form fields with provided data
-      operationId: fillForm
+      summary: Type text
+      description: Type text into a specified element
+      operationId: typeText
       parameters:
-        - name: url
+        - name: session_name
           in: query
           required: true
-          description: The URL of the form page
           schema:
             type: string
-            format: uri
-        - name: session_id
+        - name: selector
+          in: query
+          required: true
+          description: CSS selector of input element
+          schema:
+            type: string
+        - name: text
+          in: query
+          required: true
+          description: Text to type
+          schema:
+            type: string
+        - name: delay
           in: query
           required: false
+          description: Delay between keystrokes in milliseconds
+          schema:
+            type: integer
+            default: 0
+        - name: action
+          in: query
+          required: true
           schema:
             type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                form_data:
-                  type: object
-                  description: Key-value pairs of form field names and values
-                  additionalProperties:
-                    type: string
-                submit:
-                  type: boolean
-                  description: Whether to submit the form after filling
-                  default: true
+            enum: [type]
       responses:
         '200':
-          description: Successfully filled form
+          description: Successfully typed text
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/BrowserResponse'
 
-  /browser/extract:
+  /browser/press-key:
     post:
-      summary: Extract data from page
-      description: Extract specified data from a web page
-      operationId: extractData
+      summary: Press keyboard key
+      description: Press a specific keyboard key
+      operationId: pressKey
       parameters:
-        - name: url
+        - name: session_name
           in: query
           required: true
-          description: The URL to extract data from
           schema:
             type: string
-            format: uri
-        - name: extract_query
+        - name: key
           in: query
           required: true
-          description: What to extract from the page
+          description: Key to press (e.g., Enter, Tab, Escape)
           schema:
             type: string
-        - name: session_id
+        - name: action
           in: query
-          required: false
+          required: true
           schema:
             type: string
+            enum: [press_key]
       responses:
         '200':
-          description: Successfully extracted data
+          description: Successfully pressed key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BrowserResponse'
+
+  # Content Operations
+  /browser/get-text:
+    post:
+      summary: Extract text content
+      description: Extract text content from specified element
+      operationId: getText
+      parameters:
+        - name: session_name
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: selector
+          in: query
+          required: false
+          description: CSS selector of element to extract text from
+          schema:
+            type: string
+            default: body
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [get_text]
+      responses:
+        '200':
+          description: Successfully extracted text
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BrowserResponse'
+
+  /browser/get-html:
+    post:
+      summary: Get HTML source
+      description: Get the HTML source of the current page
+      operationId: getHtml
+      parameters:
+        - name: session_name
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [get_html]
+      responses:
+        '200':
+          description: Successfully retrieved HTML
           content:
             application/json:
               schema:
@@ -140,28 +385,34 @@ paths:
 
   /browser/screenshot:
     post:
-      summary: Take a screenshot
+      summary: Take screenshot
       description: Capture a screenshot of the page or specific element
       operationId: takeScreenshot
       parameters:
-        - name: url
+        - name: session_name
           in: query
           required: true
-          description: The URL to screenshot
           schema:
             type: string
-            format: uri
+        - name: full_page
+          in: query
+          required: false
+          description: Whether to capture full page
+          schema:
+            type: boolean
+            default: false
         - name: element
           in: query
           required: false
-          description: Optional CSS selector for specific element
+          description: CSS selector for specific element
           schema:
             type: string
-        - name: session_id
+        - name: action
           in: query
-          required: false
+          required: true
           schema:
             type: string
+            enum: [screenshot]
       responses:
         '200':
           description: Successfully captured screenshot
@@ -170,56 +421,212 @@ paths:
               schema:
                 $ref: '#/components/schemas/BrowserResponse'
 
-  /browser/search:
+  /browser/evaluate:
     post:
-      summary: Search on page
-      description: Find search box, enter query, and submit
-      operationId: searchOnPage
+      summary: Execute JavaScript
+      description: Execute JavaScript code in the browser context
+      operationId: evaluateScript
       parameters:
-        - name: url
+        - name: session_name
           in: query
           required: true
-          description: The URL with search functionality
           schema:
             type: string
-            format: uri
-        - name: search_query
+        - name: script
           in: query
           required: true
-          description: The search query to enter
+          description: JavaScript code to execute
           schema:
             type: string
-        - name: session_id
+        - name: action
           in: query
-          required: false
+          required: true
           schema:
             type: string
+            enum: [evaluate]
       responses:
         '200':
-          description: Successfully performed search
+          description: Successfully executed JavaScript
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/BrowserResponse'
 
-  /browser/multi-step:
+  # Tab Management
+  /browser/new-tab:
     post:
-      summary: Execute multiple steps
-      description: Perform a sequence of browser actions
-      operationId: executeMultipleSteps
+      summary: Create new tab
+      description: Create a new browser tab
+      operationId: newTab
       parameters:
-        - name: url
+        - name: session_name
           in: query
           required: true
-          description: The starting URL
+          schema:
+            type: string
+        - name: tab_id
+          in: query
+          required: false
+          description: Unique identifier for the new tab
+          schema:
+            type: string
+        - name: url
+          in: query
+          required: false
+          description: URL to open in new tab
           schema:
             type: string
             format: uri
-        - name: session_id
+        - name: action
           in: query
-          required: false
+          required: true
           schema:
             type: string
+            enum: [new_tab]
+      responses:
+        '200':
+          description: Successfully created new tab
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BrowserResponse'
+
+  /browser/switch-tab:
+    post:
+      summary: Switch to tab
+      description: Switch to a specific browser tab
+      operationId: switchTab
+      parameters:
+        - name: session_name
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: tab_id
+          in: query
+          required: true
+          description: ID of tab to switch to
+          schema:
+            type: string
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [switch_tab]
+      responses:
+        '200':
+          description: Successfully switched to tab
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BrowserResponse'
+
+  /browser/close-tab:
+    post:
+      summary: Close tab
+      description: Close a specific browser tab
+      operationId: closeTab
+      parameters:
+        - name: session_name
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: tab_id
+          in: query
+          required: true
+          description: ID of tab to close
+          schema:
+            type: string
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [close_tab]
+      responses:
+        '200':
+          description: Successfully closed tab
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BrowserResponse'
+
+  /browser/list-tabs:
+    post:
+      summary: List all tabs
+      description: Get list of all open tabs in the session
+      operationId: listTabs
+      parameters:
+        - name: session_name
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [list_tabs]
+      responses:
+        '200':
+          description: Successfully listed tabs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BrowserResponse'
+
+  # Cookie Management
+  /browser/get-cookies:
+    post:
+      summary: Get cookies
+      description: Retrieve cookies from the current page
+      operationId: getCookies
+      parameters:
+        - name: session_name
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: domain
+          in: query
+          required: false
+          description: Filter cookies by domain
+          schema:
+            type: string
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [get_cookies]
+      responses:
+        '200':
+          description: Successfully retrieved cookies
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BrowserResponse'
+
+  /browser/set-cookies:
+    post:
+      summary: Set cookies
+      description: Set cookies for the current page
+      operationId: setCookies
+      parameters:
+        - name: session_name
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [set_cookies]
       requestBody:
         required: true
         content:
@@ -227,27 +634,109 @@ paths:
             schema:
               type: object
               properties:
-                steps:
+                cookies:
                   type: array
-                  description: Array of steps to execute
+                  description: Array of cookie objects to set
                   items:
                     type: object
                     properties:
-                      action:
+                      name:
                         type: string
-                        enum: [click, fill, wait, scroll, extract]
-                      selector:
-                        type: string
-                        description: Element selector (for click, fill)
                       value:
                         type: string
-                        description: Value to input (for fill)
-                      wait_time:
-                        type: integer
-                        description: Time to wait in seconds (for wait)
+                      domain:
+                        type: string
+                      path:
+                        type: string
+                      expires:
+                        type: number
+                      httpOnly:
+                        type: boolean
+                      secure:
+                        type: boolean
       responses:
         '200':
-          description: Successfully executed all steps
+          description: Successfully set cookies
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BrowserResponse'
+
+  # Advanced Features
+  /browser/network-intercept:
+    post:
+      summary: Network interception
+      description: Enable network request/response interception
+      operationId: networkIntercept
+      parameters:
+        - name: session_name
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [network_intercept]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                patterns:
+                  type: array
+                  description: URL patterns to intercept
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Successfully enabled network interception
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BrowserResponse'
+
+  /browser/execute-cdp:
+    post:
+      summary: Execute CDP command
+      description: Execute Chrome DevTools Protocol command
+      operationId: executeCdp
+      parameters:
+        - name: session_name
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: method
+          in: query
+          required: true
+          description: CDP method name
+          schema:
+            type: string
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [execute_cdp]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                params:
+                  type: object
+                  description: CDP method parameters
+                  additionalProperties: true
+      responses:
+        '200':
+          description: Successfully executed CDP command
           content:
             application/json:
               schema:
@@ -261,12 +750,16 @@ components:
         success:
           type: boolean
           description: Whether the action was successful
-        session_id:
+        session_name:
           type: string
-          description: Session ID for continuity
+          description: Session name for continuity
+        action:
+          type: string
+          description: The action that was performed
         data:
-          type: string
+          type: object
           description: Result data from the browser action
+          additionalProperties: true
         message:
           type: string
           description: Status message

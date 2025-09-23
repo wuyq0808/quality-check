@@ -1,53 +1,58 @@
 #!/bin/bash
 
-# Lambda deployment script for Bedrock Agent to AgentCore Browser Tool bridge
+# AWS Lambda Deployment Script for Bedrock Agent Browser Bridge
+# This script packages the Lambda function with dependencies
 
-# Configuration
-LAMBDA_NAME="bedrock-agent-browser-bridge"
+set -e
+
+FUNCTION_NAME="bedrock-agent-browser-bridge"
+REGION="eu-west-1"
 RUNTIME="python3.11"
-TIMEOUT=300
-MEMORY_SIZE=512
-REGION="us-east-1"
-ZIP_FILE="lambda_deployment.zip"
 
-echo "Creating deployment package..."
+echo "🚀 Deploying Bedrock Agent Browser Bridge Lambda Function"
+echo "=================================================="
 
-# Create a temporary directory for the package
-rm -rf package/
-mkdir package
+# Create deployment package directory
+echo "📦 Creating deployment package..."
+rm -rf deployment_package
+mkdir -p deployment_package
 
 # Install dependencies
-pip install -r requirements.txt -t package/ --platform manylinux2014_x86_64 --only-binary=:all:
+echo "📚 Installing dependencies..."
+pip install -r requirements.txt -t deployment_package/
 
-# Copy the Lambda function
-cp lambda_function.py package/
+# Copy Strands Tools source code
+echo "🔧 Copying Strands Tools source..."
+cp -r /Users/yongqiwu/code/tools/src/strands_tools deployment_package/
 
-# Create the zip file
-cd package
-zip -r ../${ZIP_FILE} . -x "*.pyc" -x "__pycache__/*"
+# Copy Lambda function code
+echo "📄 Copying Lambda function code..."
+cp lambda_function.py deployment_package/
+
+# Create deployment zip
+echo "🗜️  Creating deployment zip..."
+cd deployment_package
+zip -r ../lambda_deployment.zip .
 cd ..
 
-# Clean up
-rm -rf package/
+# Deploy to AWS Lambda (uncomment to deploy)
+# echo "☁️  Deploying to AWS Lambda..."
+# aws lambda update-function-code \
+#     --function-name $FUNCTION_NAME \
+#     --zip-file fileb://lambda_deployment.zip \
+#     --region $REGION
 
-echo "Deployment package created: ${ZIP_FILE}"
+echo "✅ Deployment package created: lambda_deployment.zip"
 echo ""
-echo "To deploy the Lambda function, run:"
+echo "🔧 Environment variables needed:"
+echo "   AGENTCORE_BROWSER_ARN=<your-browser-arn>"
+echo "   AGENTCORE_REGION=eu-west-1"
+echo "   BROWSER_IDENTIFIER=<your-browser-identifier>"
+echo "   SESSION_TIMEOUT=3600"
 echo ""
-echo "aws lambda create-function \\"
-echo "  --function-name ${LAMBDA_NAME} \\"
-echo "  --runtime ${RUNTIME} \\"
-echo "  --role arn:aws:iam::ACCOUNT_ID:role/YOUR_LAMBDA_ROLE \\"
-echo "  --handler lambda_function.lambda_handler \\"
-echo "  --timeout ${TIMEOUT} \\"
-echo "  --memory-size ${MEMORY_SIZE} \\"
-echo "  --environment Variables={AGENTCORE_BROWSER_ARN=YOUR_BROWSER_ID,AGENTCORE_REGION=${REGION}} \\"
-echo "  --zip-file fileb://${ZIP_FILE} \\"
-echo "  --region ${REGION}"
+echo "📋 IAM Permissions required:"
+echo "   - bedrock-agentcore:StartBrowserSession"
+echo "   - bedrock-agentcore:StopBrowserSession"
+echo "   - bedrock-agentcore:GetBrowserSession"
 echo ""
-echo "Or to update an existing function:"
-echo ""
-echo "aws lambda update-function-code \\"
-echo "  --function-name ${LAMBDA_NAME} \\"
-echo "  --zip-file fileb://${ZIP_FILE} \\"
-echo "  --region ${REGION}"
+echo "🎯 Ready for deployment!"
