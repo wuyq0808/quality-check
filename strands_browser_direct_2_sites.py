@@ -9,11 +9,11 @@ from datetime import datetime
 
 from strands import Agent
 from strands.models import BedrockModel
-from strands_tools.browser import AgentCoreBrowser
+from custom_browser import CustomAgentCoreBrowser
 
 def evaluate_website_feature(website_urls, user_prompt):
     try:
-        browser_tool = AgentCoreBrowser(
+        browser_tool = CustomAgentCoreBrowser(
             region='us-east-1',
             identifier="recordingBrowserWithS3_20250916170045-Ec92oniUSi",
             session_timeout=900,  # 15 minutes
