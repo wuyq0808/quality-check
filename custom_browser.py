@@ -4,12 +4,66 @@ Custom AgentCore Browser that properly initializes Playwright
 """
 
 from strands_tools.browser import AgentCoreBrowser
-from strands_tools.browser.models import InitSessionAction, BrowserSession
+from strands_tools.browser.models import (
+    InitSessionAction, BrowserSession, BrowserInput,
+    ListLocalSessionsAction, NavigateAction, ClickAction, TypeAction,
+    EvaluateAction, PressKeyAction, GetTextAction, GetHtmlAction,
+    ScreenshotAction, RefreshAction, BackAction, ForwardAction,
+    NewTabAction, SwitchTabAction, CloseTabAction, ListTabsAction,
+    GetCookiesAction, SetCookiesAction, NetworkInterceptAction,
+    ExecuteCdpAction, CloseAction
+)
 from playwright.async_api import async_playwright, Browser as PlaywrightBrowser
-from typing import Dict, Any
+from typing import Dict, Any, Optional, Union, Literal
+from pydantic import BaseModel, Field
+from strands import tool
 import logging
+import base64
 
+# Configure logging to show INFO level messages
+logging.basicConfig(level=logging.INFO, format='%(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+
+class ClickCoordinateAction(BaseModel):
+    """Action model for clicking at specific pixel coordinates"""
+    type: Literal["click_coordinate"] = "click_coordinate"
+    x: int  # X coordinate in pixels
+    y: int  # Y coordinate in pixels
+    session_name: str
+    description: Optional[str] = "Click at coordinates"
+
+
+class CustomBrowserInput(BaseModel):
+    """Extended BrowserInput with custom coordinate click action"""
+    action: Union[
+        # All original actions from BrowserInput
+        InitSessionAction,
+        ListLocalSessionsAction,
+        NavigateAction,
+        ClickAction,
+        TypeAction,
+        EvaluateAction,
+        PressKeyAction,
+        GetTextAction,
+        GetHtmlAction,
+        ScreenshotAction,
+        RefreshAction,
+        BackAction,
+        ForwardAction,
+        NewTabAction,
+        SwitchTabAction,
+        CloseTabAction,
+        ListTabsAction,
+        GetCookiesAction,
+        SetCookiesAction,
+        NetworkInterceptAction,
+        ExecuteCdpAction,
+        CloseAction,
+        # Our custom action
+        ClickCoordinateAction,
+    ] = Field(discriminator="type")
+    wait_time: Optional[int] = Field(default=2, description="Time to wait after action in seconds")
 
 
 class CustomAgentCoreBrowser(AgentCoreBrowser):
@@ -72,3 +126,98 @@ class CustomAgentCoreBrowser(AgentCoreBrowser):
         except Exception as e:
             logger.error(f"failed to initialize session {session_name}: {str(e)}")
             return {"status": "error", "content": [{"text": f"Failed to initialize session: {str(e)}"}]}
+
+    @tool
+    def browser(self, browser_input: CustomBrowserInput) -> Dict[str, Any]:
+        """CUSTOM OVERRIDE: Handle coordinate click actions + standard browser actions"""
+        # Auto-start platform on first use
+        if not self._started:
+            self._start()
+
+        if isinstance(browser_input, dict):
+            action = CustomBrowserInput.model_validate(browser_input).action
+        else:
+            action = browser_input.action
+
+        # CUSTOM OVERRIDE: Handle our coordinate click action
+        if isinstance(action, ClickCoordinateAction):
+            return self.click_coordinate(action)
+
+        # Delegate all other actions to parent class
+        # Convert back to original BrowserInput for parent compatibility
+        original_browser_input = BrowserInput(
+            action=action,
+            wait_time=browser_input.wait_time if not isinstance(browser_input, dict) else browser_input.get("wait_time", 2)
+        )
+        return super().browser(original_browser_input)
+
+    def click_coordinate(self, action: ClickCoordinateAction) -> Dict[str, Any]:
+        """Handle coordinate click action"""
+        return self._execute_async(self._async_click_coordinate(action))
+
+    async def _async_click_coordinate(self, action: ClickCoordinateAction) -> Dict[str, Any]:
+        """Async click at specific pixel coordinates implementation"""
+        session_name = action.session_name
+
+        # Check if session exists
+        if session_name not in self._sessions:
+            return {"status": "error", "content": [{"text": f"Session '{session_name}' not found"}]}
+
+        try:
+            session = self._sessions[session_name]
+            page = session.get_active_page()
+
+            # CUSTOM OVERRIDE: Click at pixel coordinates using page.mouse.click like test_browser_simple.py
+            await page.mouse.click(action.x, action.y)
+
+            return {
+                "status": "success",
+                "content": [
+                    {
+                        "json": {
+                            "action": "click_coordinate",
+                            "coordinates": {"x": action.x, "y": action.y},
+                            "sessionName": session_name,
+                        }
+                    }
+                ],
+            }
+
+        except Exception as e:
+            logger.error(f"failed to click at coordinates in session {session_name}: {str(e)}")
+            return {"status": "error", "content": [{"text": f"Failed to click at coordinates: {str(e)}"}]}
+
+    async def _async_screenshot(self, action: ScreenshotAction) -> Dict[str, Any]:
+        """CUSTOM OVERRIDE: Take screenshot and return base64 image data for LLM vision"""
+        session_name = action.session_name
+
+        # Check if session exists
+        if session_name not in self._sessions:
+            return {"status": "error", "content": [{"text": f"Session '{session_name}' not found"}]}
+
+        try:
+            session = self._sessions[session_name]
+            page = session.get_active_page()
+
+            # Take PNG screenshot
+            screenshot_bytes = await page.screenshot(type='png')
+            image_format = 'png'
+
+            # Use raw bytes directly as shown in AWS documentation
+            return {
+                "status": "success",
+                "content": [
+                    {
+                        "image": {
+                            "format": image_format,
+                            "source": {
+                                "bytes": screenshot_bytes  # Raw bytes directly
+                            }
+                        }
+                    }
+                ],
+            }
+
+        except Exception as e:
+            logger.error(f"failed to take screenshot in session {session_name}: {str(e)}")
+            return {"status": "error", "content": [{"text": f"Failed to take screenshot: {str(e)}"}]}
