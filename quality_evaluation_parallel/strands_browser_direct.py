@@ -30,13 +30,14 @@ def evaluate_website_feature(website_url, feature_description):
         browser_tool = AgentCoreBrowser(
             region='us-east-1',
             identifier=custom_browser_id,
-            session_timeout=1800
+            session_timeout=900,  # 15 minutes
         )
         
         # Create explicit Bedrock model with EU region (matching your AWS config)
         bedrock_model = BedrockModel(
             model_id="eu.anthropic.claude-sonnet-4-20250514-v1:0",
-            region_name="eu-west-1"
+            region_name="eu-west-1",
+            temperature=0.1
         )
 
         # Create Strands agent with explicit EU model
@@ -45,32 +46,42 @@ def evaluate_website_feature(website_url, feature_description):
             model=bedrock_model,  # Use explicit EU region model
             tools=[browser_tool.browser],  # LLM gets direct access to browser functions
             system_prompt="""
-You have direct access to browser tools. Use them to complete web navigation tasks.
-Be detailed and consistent in the response.
-Rating Definition
-1 - Terrible
-Non-functional, misleading
-2 - Very Bad
-Barely usable or broken elements
-3 - Bad
-Significant usability/content gaps
-4 - Neutral
-Works, but forgettable
-5 - Good
-Solid experience, few flaws
-6 - Very Good
-Polished and competitive
-7 - Excellent
-Best-in-class; highly competitive
+You are a detailed web interaction recorder and observer. Your job is to systematically document everything you see and do while testing website features.
 
-OUTPUT in MARKDOWN with the following structure:
-| Feature   | [Website] | 
-|-----------|-----------------------------|
-| Feature 1 | 6/7 - Rational              |
-| Feature 2 | 6/7 - Rational              |
-### Summary
-- standout strengths  
-- drawbacks  
+## Recording Protocol:
+1. Always take screenshots at each major step
+2. Document every click, type, hover, and navigation action
+3. Record what you see: UI elements, text, buttons, forms, dropdowns, suggestions
+4. Note timing and responsiveness of interactions
+5. Capture any errors, loading states, or unexpected behavior
+
+## What to Record:
+- **Initial Page State**: What's visible when you first arrive
+- **Every Interaction**: Step-by-step actions and their results
+- **UI Behavior**: How elements respond (hover effects, loading states)
+- **Content Details**: Exact text shown, placeholder text, error messages
+- **Performance Observations**: Loading times, responsiveness, delays
+- **Navigation Flow**: How you move between different parts of the feature
+- **Edge Cases**: What happens with unusual inputs, empty states, errors
+
+## Output Format:
+Provide a chronological narrative of your testing session with detailed observations. Do NOT rate or evaluate - just record what happened.
+
+Structure as:
+## Testing Session: [Website] - [Feature]
+### Step 1: [Action]
+- **What I did**: [specific action]
+- **What I observed**: [detailed findings]
+- **Screenshot**: [describe what screenshot shows]
+
+### Step 2: [Action]
+- **What I did**: [specific action]
+- **What I observed**: [detailed findings]
+- **Screenshot**: [describe what screenshot shows]
+
+Continue for all testing steps...
+
+Focus on comprehensive documentation - another agent will use your detailed records for evaluation.
 """
         )
 
@@ -80,7 +91,7 @@ Navigate to {website_url} and evaluate the following feature:
 
 {feature_description}
 
-Please test thoroughly and provide detailed feedback using the rating system.
+Please test thoroughly and document all your observations.
         """)
 
         return str(result)
