@@ -17,7 +17,7 @@ def process_and_save_result(website_url, result):
     import os
 
     # Create output directory if it doesn't exist
-    output_dir = "quality_evaluation_parallel_output"
+    output_dir = "quality_evaluation_output"
     os.makedirs(output_dir, exist_ok=True)
 
     print(f"\n🌐 Website: {website_url}")
@@ -61,7 +61,7 @@ def create_quality_evaluator():
         tools=[],  # No tools - pure prompt-based agent
         system_prompt="""
 You are a senior web product manager. 
-Evaluate the features of multiple websites based on provided evaluation recordings.
+Analyze the recorded observations of navigating the sites, Evaluate the features of multiple websites.
 
 Rating Definition
 1 - Terrible
@@ -110,22 +110,22 @@ def get_test_scenarios(scenario_name):
             "websites": [
                 {
                     "url": "https://www.agoda.com",
-                    "instructions": ""
+                    "website_instructions": ""
                 },
                 {
                     "url": "https://www.google.com/travel/hotels",
-                    "instructions": ""
+                    "website_instructions": ""
                 },
                 {
                     "url": "https://www.booking.com",
-                    "instructions": "Close overlay modal about Sign In."
+                    "website_instructions": "Close overlay modal about Sign In."
                 },
                 {
                     "url": "https://www.skyscanner.com/hotels",
-                    "instructions": ""
+                    "website_instructions": ""
                 }
             ],
-            "base_request": f"""
+            "feature_instruction": f"""
 Current time: {current_time}
 
 Steps:
@@ -157,27 +157,29 @@ Cases:
                 # },
                 {
                     "url": "https://www.booking.com",
-                    "instructions": "Close overlay modal about Sign In."
+                    "website_instructions": "Close overlay modal about Sign In."
                 },
                 {
                     "url": "https://www.skyscanner.com/hotels",
-                    "instructions": ""
+                    "website_instructions": ""
                 }
             ],
-            "base_request": f"""
+            "feature_instruction": f"""
 Current time: {current_time}
 
 Test and record interactions with the auto-complete feature for hotel destinations:
+
+Destination: Barcelona
 
 Steps:
 1. Find the search box for hotel destinations
 2. Record all interactions with the auto complete feature
 
-Cases: (MUST try more then enough variations to be thorough)
+Cases:
 1. Type in City name, does the main city destination show as the first results?
 2. Type in City name check if relevant POI's show up
 3. Type in City name check if POI's are all in the same language
-4. Type in City name with typo, check if it can handle typo and show the correct city name
+4. Type in City name with typo, check if it can handle typo and show the correct city name - MUST try more then enough variations to be thorough
             """
         }
     }
@@ -192,7 +194,7 @@ if __name__ == "__main__":
     scenario = get_test_scenarios("autocomplete_feature")
     # scenario = get_test_scenarios("hotel_search_quality")
 
-    base_request = scenario["base_request"]
+    feature_instruction = scenario["feature_instruction"]
     websites = scenario["websites"]
     print("🎯 Starting evaluation")
     print("=" * 60)
@@ -205,13 +207,13 @@ if __name__ == "__main__":
         print(f"🔄 Starting evaluation for {website_url}")
 
         try:
-            # Create complete prompt combining website URL, base request, and specific instructions
-            website_instructions = config['instructions']
-            instructions_section = f"\nWebsite-specific instructions:\n{website_instructions}\n" if website_instructions else ""
+            # Create complete prompt combining website URL, feature instruction, and specific instructions
+            website_instructions = config['website_instructions']
+            website_specific_instruction = f"\nWebsite-specific instructions:\n{website_instructions}\n" if website_instructions else ""
 
             complete_prompt = f"""Navigate to {website_url} and evaluate the following:
 
-{base_request}{instructions_section}
+{feature_instruction}{website_specific_instruction}
 Please test thoroughly and document all your observations."""
 
             result = evaluate_website_feature(complete_prompt)
@@ -246,10 +248,10 @@ Please test thoroughly and document all your observations."""
         website_results.append("")
 
     comparison_prompt = f"""
-    Based on these detailed recording sessions that were produced by executing the following test request, evaluate and compare the auto-complete feature for hotel destinations:
+    Based on these detailed recording sessions that were produced by executing the following test request, evaluate and compare:
 
-Base Test Request:
-{base_request}
+Feature Test Instructions:
+{feature_instruction}
 
 Website-specific instructions were also provided for each site.
 
@@ -261,7 +263,7 @@ Recording Results from executing the above test:
 
     # Save comparison to file
     import os
-    output_dir = "quality_evaluation_parallel_output"
+    output_dir = "quality_evaluation_output"
     os.makedirs(output_dir, exist_ok=True)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -274,4 +276,4 @@ Recording Results from executing the above test:
     print(f"📄 Comparison analysis saved to: {comparison_filepath}")
     print(f"\n🔍 Comparison Analysis:\n{comparison_result}")
 
-    print("\n🎉 Parallel quality evaluation completed!")
+    print("\n🎉 Quality evaluation completed!")

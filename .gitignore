@@ -157,8 +157,8 @@ Temporary Items
 screenshots/
 recording_config.json
 website_evaluation_*.md
-quality_evaluation_parallel_output/*
-!quality_evaluation_parallel_output/.gitkeep
+quality_evaluation_output/*
+!quality_evaluation_output/.gitkeep
 
 # Temporary files
 /tmp/

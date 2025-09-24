@@ -180,12 +180,13 @@ class CustomAgentCoreBrowser(AgentCoreBrowser):
 
             # Check if new tab/page opened
             pages_after = context.pages
+            new_tab_id = None
             if len(pages_after) > pages_before:
                 # New tab opened, add it to session and make it active
                 new_page = pages_after[-1]  # Last opened page
                 new_tab_id = f"tab_{len(session.tabs) + 1}"
                 session.add_tab(new_tab_id, new_page)
-                logger.info(f"New tab detected and added: {new_tab_id}, URL: {new_page.url}")
+                logger.info(f"New tab detected and added: {new_tab_id}")
 
             return {
                 "status": "success",
@@ -195,7 +196,8 @@ class CustomAgentCoreBrowser(AgentCoreBrowser):
                             "action": "click_coordinate",
                             "coordinates": {"x": action.x, "y": action.y},
                             "sessionName": session_name,
-                            "newTabDetected": len(pages_after) > pages_before
+                            "newTabDetected": len(pages_after) > pages_before,
+                            "newTabId": new_tab_id
                         }
                     }
                 ],
