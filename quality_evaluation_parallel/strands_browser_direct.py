@@ -7,7 +7,7 @@ LLM gets direct access to browser tools - no custom navigation code
 import json
 from datetime import datetime
 
-from strands import Agent
+from strands import Agent, tool
 from strands.models import BedrockModel
 import sys
 import os
@@ -25,6 +25,16 @@ def evaluate_website_feature(website_specific_prompt):
         str: Evaluation results in markdown format
     """
     try:
+        # Initialize simple string array for storing detailed observations
+        observations = []
+
+        # Create a simple memory storage function for the agent
+        @tool
+        def store_observation(text: str) -> str:
+            """Store an observation in the observations array"""
+            observations.append(text)
+            return f"Stored: {text[:50]}..."
+
         # Configure browser tool with CustomAgentCoreBrowser (coordinate click + visual screenshots)
         # Note: Recording is enabled with S3 storage in us-east-1
         custom_browser_id = "recordingBrowserWithS3_20250916170045-Ec92oniUSi"
@@ -46,16 +56,17 @@ def evaluate_website_feature(website_specific_prompt):
         agent = Agent(
             name="WebNavigator",
             model=bedrock_model,  # Use explicit EU region model
-            tools=[browser_tool.browser],  # LLM gets direct access to browser functions
+            tools=[browser_tool.browser, store_observation],  # LLM gets direct access to browser functions and memory
             system_prompt="""
 You are a detailed web interaction recorder and observer. Your job is to systematically document everything you see and do while testing website features.
+You have access to a memory system. Must use store_observation("text") to store key findings and observations on every step.
 
 ## Recording Protocol:
 1. Always take screenshots at each major step - screenshots are the cardinal source of truth
 2. Get HTML data only when recording important data (e.g., hotel lists, search results) to help support what's visible in screenshots
 3. Use click_coordinate with pixel coordinates to click elements based on visual analysis
-4. Dismiss pop-ups, cookie banners, and modals using coordinate clicks
-5. After clicking on search, MUST check all tabs/pages we have. See if a new tab has opened and ensure you're working on the correct tab
+4. Must dismiss/close pop-ups, cookie banners, and modals using coordinate clicks once you see them
+5. After clicking on search/screenshot failure, MUST check all tabs/pages we have. Ensure you're working on the correct tab
 6. Document every click, type, hover, and navigation action with precise coordinates
 7. Record what you see: UI elements, text, buttons, forms, dropdowns, suggestions
 8. For data-heavy pages (hotel lists, search results), use HTML data only to help extract details that support what's shown in screenshots
@@ -71,11 +82,10 @@ You are a detailed web interaction recorder and observer. Your job is to systema
 - **Navigation Flow**: How you move between different parts of the feature
 - **Edge Cases**: What happens with unusual inputs, empty states, errors
 
-## Output Format:
-Provide a chronological narrative of your testing session with detailed observations. 
-NEVER summarize / analize / rate; Just document everything in detail.
+## Output:
+Your main output must be very brief - NEVER summarize / analyze / evaluate EVEN IF ASKED - just key results. All the details goes into memory storage.
 
-Structure as:
+Structure for memory storage:
 ## Testing Session: [Website] - [Feature]
 ### Step 1: [Action]
 - **What I did**: [specific action]
@@ -91,7 +101,8 @@ Structure as:
 
 Continue for all testing steps...
 
-Focus on comprehensive documentation - another agent will use your detailed records for evaluation.
+Focus on storing comprehensive records in memory - another agent will use your stored detailed records for evaluation.
+For memory storage: NEVER summarize / analyze / evaluate / rate EVEN IF ASKED.
 """
         )
 
@@ -99,7 +110,14 @@ Focus on comprehensive documentation - another agent will use your detailed reco
         print(f"🔍 Starting recording session")
         result = agent(website_specific_prompt)
 
-        return str(result)
+        # Retrieve all stored observations
+        if observations:
+            observations_text = "\n".join([f"- {obs}" for obs in observations])
+            # Return both concise result and detailed stored observations
+            combined_result = f"{str(result)}\n\n## Detailed Records:\n{observations_text}"
+            return combined_result
+        else:
+            return str(result)
         
     except Exception as e:
         error_msg = f"Strands browser tool implementation failed: {str(e)}"

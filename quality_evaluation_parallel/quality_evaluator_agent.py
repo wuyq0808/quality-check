@@ -5,7 +5,7 @@ Uses prompt-based evaluation by invoking the browser evaluation method
 """
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 
 from strands import Agent
 from strands.models import BedrockModel
@@ -101,27 +101,38 @@ if __name__ == "__main__":
     import concurrent.futures
     from strands_browser_direct import evaluate_website_feature
 
-    # User request for evaluation
-#     user_request = """
-#     Test and record interactions with the auto-complete feature for hotel destinations:
-# For booking.com, there may be an overlay modal about Sign In. Use screenshot to find it, and MUST close it by Clicking the close button: <button aria-label="Dismiss sign-in info." type="button" class="de576f5064 b46cd7aad7 e26a59bb37 c295306d66 c7a901b0e7 daf5d4cb1c"><span class="ec1ff2f0cb"><span class="fc70cba028 ca6ff50764" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="50px"><path d="m13.31 12 6.89-6.89a.93.93 0 1 0-1.31-1.31L12 10.69 5.11 3.8A.93.93 0 0 0 3.8 5.11L10.69 12 3.8 18.89a.93.93 0 0 0 1.31 1.31L12 13.31l6.89 6.89a.93.93 0 1 0 1.31-1.31z"></path></svg></span></span></button>
+def get_test_scenarios():
+    """Define different test scenarios with their base requests and website configurations"""
+    current_time = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
 
-# Find the search box for hotel destinations, record all interactions with the auto complete feature.
+    return {
+        "hotel_search_quality": {
+            "websites": [
+                {
+                    "url": "https://www.agoda.com",
+                    "instructions": ""
+                },
+                {
+                    "url": "https://www.google.com/travel/hotels",
+                    "instructions": ""
+                },
+                {
+                    "url": "https://www.booking.com",
+                    "instructions": "Close overlay modal about Sign In."
+                },
+                {
+                    "url": "https://www.skyscanner.com/hotels",
+                    "instructions": ""
+                }
+            ],
+            "base_request": f"""
+Current time: {current_time}
 
-# Cases: (MUST try more then enough variations to be sure; MUST check large amount of typo likely to be made by users)
-# 1. Type in City name, does the main city destination show as the first results?
-# 2. Type in City name check if relevant POI's show up;
-# 3. Type in City name check if POI's are all in the same language
-# 4. Type in City name with typo, check if it can handle typo and show the correct city name
-#     """
-
-    # Base user request without website-specific instructions
-    base_request = """
 Steps:
 1. Find the destination input,
 2. Input destination: Barcelona.
 3. Select check-in: now+7d; check-out: now+8d.
-3. Wait for the search result.
+4. Wait for the search result.
 Intent Alignment Check: Verify that the top listings align with user intent (e.g. centrally located, well-reviewed, reasonably priced options appear first).
 
 Cases:
@@ -129,27 +140,65 @@ Cases:
 2. Star Rating vs Price Balance Check: Ensure that the first few listings represent a healthy mix of quality (e.g. 3–5 star) and value, rather than skewing too heavily toward one end.
 3. Repeat Search Consistency Check: Repeat the same search multiple times and check if the top listings remain consistent unless filters, sort, or availability changes.
 4. Local Context Appropriateness Check: For destination-specific searches (e.g. Tokyo city center), verify that top listings are contextually appropriate (e.g. located in Shinjuku rather than suburban outskirts).
-    """
+            """
+        },
+        "autocomplete_feature": {
+            "websites": [
+                {
+                    "url": "https://www.agoda.com",
+                    "instructions": ""
+                },
+                {
+                    "url": "https://www.google.com/travel/hotels",
+                    "instructions": ""
+                },
+                {
+                    "url": "https://www.booking.com",
+                    "instructions": "Close overlay modal about Sign In."
+                },
+                {
+                    "url": "https://www.skyscanner.com/hotels",
+                    "instructions": ""
+                }
+            ],
+            "base_request": f"""
+Current time: {current_time}
 
-    websites = [
-        {
-            "url": "https://www.agoda.com",
-            "instructions": "Type Barcelona, and select the most relevant auto suggested option."
-        },
-        {
-            "url": "https://www.google.com/travel/hotels",
-            "instructions": "Type Barcelona, and select the most relevant auto suggested option."
-        },
-        {
-            "url": "https://www.booking.com",
-            "instructions": "Close overlay modal about Sign In."
-        },
-        {
-            "url": "https://www.skyscanner.com/hotels",
-            "instructions": "Type Barcelona, then Click search button."
+Test and record interactions with the auto-complete feature for hotel destinations:
+
+Steps:
+1. Find the search box for hotel destinations
+2. Record all interactions with the auto complete feature
+
+Cases: (MUST try multiple variations to be thorough)
+1. Type in City name, does the main city destination show as the first results?
+2. Type in City name check if relevant POI's show up
+3. Type in City name check if POI's are all in the same language
+4. Type in City name with typo, check if it can handle typo and show the correct city name
+            """
         }
-    ]
-    print("🎯 Starting parallel evaluation of hotel auto-complete features...")
+    }
+
+def choose_scenario(scenario_name):
+    """Choose a test scenario by name"""
+    scenarios = get_test_scenarios()
+    if scenario_name not in scenarios:
+        available = list(scenarios.keys())
+        raise ValueError(f"Unknown scenario '{scenario_name}'. Available: {available}")
+    return scenarios[scenario_name]
+
+if __name__ == "__main__":
+    import concurrent.futures
+    from strands_browser_direct import evaluate_website_feature
+
+    # Choose which scenario to run
+    scenario = choose_scenario("autocomplete_feature")
+    # scenario = choose_scenario("hotel_search_quality")
+    
+
+    base_request = scenario["base_request"]
+    websites = scenario["websites"]
+    print("🎯 Starting evaluation")
     print("=" * 60)
 
     # Execute evaluations sequentially - call evaluate_website_feature with complete prompt
@@ -161,13 +210,12 @@ Cases:
 
         try:
             # Create complete prompt combining website URL, base request, and specific instructions
+            website_instructions = config['instructions']
+            instructions_section = f"\nWebsite-specific instructions:\n{website_instructions}\n" if website_instructions else ""
+
             complete_prompt = f"""Navigate to {website_url} and evaluate the following:
 
-{base_request}
-
-Website-specific instructions:
-{config['instructions']}
-
+{base_request}{instructions_section}
 Please test thoroughly and document all your observations."""
 
             result = evaluate_website_feature(complete_prompt)
