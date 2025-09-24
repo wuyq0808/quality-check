@@ -144,17 +144,17 @@ Cases:
         },
 
 
-        
+
         "autocomplete_feature": {
             "websites": [
-                {
-                    "url": "https://www.agoda.com",
-                    "instructions": ""
-                },
-                {
-                    "url": "https://www.google.com/travel/hotels",
-                    "instructions": ""
-                },
+                # {
+                #     "url": "https://www.agoda.com",
+                #     "instructions": ""
+                # },
+                # {
+                #     "url": "https://www.google.com/travel/hotels",
+                #     "instructions": ""
+                # },
                 {
                     "url": "https://www.booking.com",
                     "instructions": "Close overlay modal about Sign In."
@@ -173,7 +173,7 @@ Steps:
 1. Find the search box for hotel destinations
 2. Record all interactions with the auto complete feature
 
-Cases: (MUST try multiple variations to be thorough)
+Cases: (MUST try more then enough variations to be thorough)
 1. Type in City name, does the main city destination show as the first results?
 2. Type in City name check if relevant POI's show up
 3. Type in City name check if POI's are all in the same language
@@ -191,7 +191,6 @@ if __name__ == "__main__":
     # Choose which scenario to run
     scenario = get_test_scenarios("autocomplete_feature")
     # scenario = get_test_scenarios("hotel_search_quality")
-    
 
     base_request = scenario["base_request"]
     websites = scenario["websites"]

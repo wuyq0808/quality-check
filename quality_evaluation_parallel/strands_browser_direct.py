@@ -42,7 +42,7 @@ def evaluate_website_feature(website_specific_prompt):
         browser_tool = CustomAgentCoreBrowser(
             region='us-east-1',
             identifier=custom_browser_id,
-            session_timeout=900,  # 15 minutes
+            session_timeout=1800,  # 30 minutes
         )
         
         # Create explicit Bedrock model with EU region (matching your AWS config)
