@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field
 from strands import tool
 import logging
 import base64
+import os
 
 # Configure logging to show INFO level messages
 logging.basicConfig(level=logging.INFO, format='%(name)s - %(levelname)s - %(message)s')
@@ -167,8 +168,24 @@ class CustomAgentCoreBrowser(AgentCoreBrowser):
             session = self._sessions[session_name]
             page = session.get_active_page()
 
+            # Track number of pages before click to detect new tabs
+            context = page.context
+            pages_before = len(context.pages)
+
             # CUSTOM OVERRIDE: Click at pixel coordinates using page.mouse.click like test_browser_simple.py
             await page.mouse.click(action.x, action.y)
+
+            # Wait a moment for potential new tab to open
+            await page.wait_for_timeout(1000)
+
+            # Check if new tab/page opened
+            pages_after = context.pages
+            if len(pages_after) > pages_before:
+                # New tab opened, add it to session and make it active
+                new_page = pages_after[-1]  # Last opened page
+                new_tab_id = f"tab_{len(session.tabs) + 1}"
+                session.add_tab(new_tab_id, new_page)
+                logger.info(f"New tab detected and added: {new_tab_id}, URL: {new_page.url}")
 
             return {
                 "status": "success",
@@ -178,6 +195,7 @@ class CustomAgentCoreBrowser(AgentCoreBrowser):
                             "action": "click_coordinate",
                             "coordinates": {"x": action.x, "y": action.y},
                             "sessionName": session_name,
+                            "newTabDetected": len(pages_after) > pages_before
                         }
                     }
                 ],
@@ -199,9 +217,12 @@ class CustomAgentCoreBrowser(AgentCoreBrowser):
             session = self._sessions[session_name]
             page = session.get_active_page()
 
-            # Take PNG screenshot
-            screenshot_bytes = await page.screenshot(type='png')
-            image_format = 'png'
+            # Take PNG screenshot with timeout and skip font/animation waits
+            screenshot_bytes = await page.screenshot(
+                type='png',
+                timeout=10000,  # 10 second timeout
+                animations='disabled'  # Skip animation/font waits
+            )
 
             # Use raw bytes directly as shown in AWS documentation
             return {
@@ -209,7 +230,7 @@ class CustomAgentCoreBrowser(AgentCoreBrowser):
                 "content": [
                     {
                         "image": {
-                            "format": image_format,
+                            "format": 'png',
                             "source": {
                                 "bytes": screenshot_bytes  # Raw bytes directly
                             }
