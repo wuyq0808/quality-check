@@ -101,11 +101,11 @@ if __name__ == "__main__":
     import concurrent.futures
     from strands_browser_direct import evaluate_website_feature
 
-def get_test_scenarios():
-    """Define different test scenarios with their base requests and website configurations"""
+def get_test_scenarios(scenario_name):
+    """Get test scenario by name"""
     current_time = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
 
-    return {
+    scenarios = {
         "hotel_search_quality": {
             "websites": [
                 {
@@ -142,6 +142,9 @@ Cases:
 4. Local Context Appropriateness Check: For destination-specific searches (e.g. Tokyo city center), verify that top listings are contextually appropriate (e.g. located in Shinjuku rather than suburban outskirts).
             """
         },
+
+
+        
         "autocomplete_feature": {
             "websites": [
                 {
@@ -179,12 +182,6 @@ Cases: (MUST try multiple variations to be thorough)
         }
     }
 
-def choose_scenario(scenario_name):
-    """Choose a test scenario by name"""
-    scenarios = get_test_scenarios()
-    if scenario_name not in scenarios:
-        available = list(scenarios.keys())
-        raise ValueError(f"Unknown scenario '{scenario_name}'. Available: {available}")
     return scenarios[scenario_name]
 
 if __name__ == "__main__":
@@ -192,8 +189,8 @@ if __name__ == "__main__":
     from strands_browser_direct import evaluate_website_feature
 
     # Choose which scenario to run
-    scenario = choose_scenario("autocomplete_feature")
-    # scenario = choose_scenario("hotel_search_quality")
+    scenario = get_test_scenarios("autocomplete_feature")
+    # scenario = get_test_scenarios("hotel_search_quality")
     
 
     base_request = scenario["base_request"]
