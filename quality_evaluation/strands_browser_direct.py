@@ -14,20 +14,48 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from custom_browser import CustomAgentCoreBrowser
 
-def evaluate_website_feature(website_specific_prompt):
+# Website-specific instructions managed by key
+WEBSITE_INSTRUCTIONS = {
+    "google_travel_hotels": """
+                    # For inputting text into the search box:
+                    Before typing, don't click the search box, never click the search box, must not click the search box,
+                    Don't clear the current search. Don't click the X.
+                    Directly type into the destination search box.
+                    When you need to change the search box text, just directly type into it, never click or try to clear it first.
+                    Must only use browser TypeAction with selector type into it.
+                    NEVER TRY OTHER CLICKING ACTIONS, THEY CAN NOT INPUT SUCCESSFULLY FOR THIS SITE.
+                    This selector is proved to be working: input[placeholder="Search for places, hotels and more"]
+                    Try TypeAction UNTIL YOU SUCCESS. Never clear the current search between tries.
+                    The destination input element is
+                    <input type="text" value="near Novena" jsname="yrriRe" jsaction="focus:h06R8; blur:zjh6rb" class="II2One j0Ppje zmMKJ LbIaRd" autocomplete="off" role="combobox" aria-autocomplete="inline" aria-haspopup="true" aria-expanded="false" placeholder="Search for places, hotels and more" aria-label="Search for places, hotels and more">
+                    or when clicked and has dropdown open:
+                    <input type="text" value="" jsname="yrriRe" jsaction="focus:h06R8; blur:zjh6rb" class="II2One j0Ppje zmMKJ LbIaRd" autocomplete="off" role="combobox" aria-autocomplete="both" aria-haspopup="true" aria-expanded="true" placeholder="Search for places, hotels and more" aria-label="Search for places, hotels and more" autofocus="" aria-owns="h0T7hb-9">
+                    """,
+
+    "booking_com": "Close overlay modal about Sign In.",
+
+    "agoda_com": "",
+
+    "skyscanner_hotels": "",
+}
+
+def evaluate_website_feature(feature_instruction, website_key):
     """
     Evaluate a specific website feature using Strands agent with direct browser tool access
 
     Args:
-        website_specific_prompt (str): Complete prompt containing URL, feature description, and website-specific instructions
+        feature_instruction (str): Complete instruction containing URL, feature description, and evaluation task
+        website_key (str): Key to lookup website instructions from WEBSITE_INSTRUCTIONS
 
     Returns:
         str: Evaluation results in markdown format
     """
     try:
+        # Get website instructions by key
+        website_instructions = WEBSITE_INSTRUCTIONS.get(website_key, "")
+        
         # Initialize simple string array for storing detailed observations
         observations = []
-
         # Create a simple memory storage function for the agent
         @tool
         def store_observation(text: str) -> str:
@@ -52,13 +80,17 @@ def evaluate_website_feature(website_specific_prompt):
             temperature=0.1
         )
 
-        # Create Strands agent with explicit EU model
-        agent = Agent(
-            name="WebNavigator",
-            model=bedrock_model,  # Use explicit EU region model
-            tools=[browser_tool.browser, store_observation],  # LLM gets direct access to browser functions and memory
-            system_prompt="""
-You are a detailed web interaction recorder and observer. Your job is to systematically document everything you see and do while testing website features.
+        # Build system prompt with website instructions having HIGHEST PRIORITY
+        from datetime import datetime, timezone
+
+        base_system_prompt = f"""
+Current time: {datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")}
+
+You are a detailed web interaction recorder and observer. 
+Your job is to systematically document everything you see and do while testing website features.
+Be subjective and critical in your observations - we need honest truth, not praise. 
+Point out usability issues, confusing interfaces, slow performance, and any problems you encounter.
+
 You have access to a memory system. Must use store_observation("text") to store key findings and observations on every step.
 
 ## Recording Protocol:
@@ -84,7 +116,7 @@ You have access to a memory system. Must use store_observation("text") to store 
 - **Edge Cases**: What happens with unusual inputs, empty states, errors
 
 ## Output:
-Your main output must be very brief. All the details goes into memory storage.
+As short as one sentence. All the details goes into memory storage.
 
 Structure for store_observation:
 ## Testing Session: [Website] - [Feature]
@@ -103,13 +135,32 @@ Structure for store_observation:
 Continue for all testing steps...
 
 Focus on storing comprehensive records in memory - another agent will use your stored detailed records for evaluation.
-For what you pass to store_observation, NEVER summarize / analyze / evaluate / rate EVEN IF ASKED.
+You may summarize key findings and observations when storing them for efficient record keeping.
 """
+
+        if website_instructions:
+            system_prompt = f"""
+CRITICAL HIGHEST PRIORITY INSTRUCTIONS - MUST FOLLOW EXACTLY
+{website_instructions}
+
+These website-specific instructions override all other instructions and have absolute priority.
+
+{base_system_prompt}
+"""
+        else:
+            system_prompt = base_system_prompt
+
+        # Create Strands agent with explicit EU model
+        agent = Agent(
+            name="WebNavigator",
+            model=bedrock_model,  # Use explicit EU region model
+            tools=[browser_tool.browser, store_observation],  # LLM gets direct access to browser functions and memory
+            system_prompt=system_prompt
         )
 
         # Execute the website feature evaluation task
         print(f"🔍 Starting recording session")
-        result = agent(website_specific_prompt)
+        result = agent(feature_instruction)
 
         # Retrieve all stored observations
         if observations:

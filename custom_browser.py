@@ -21,8 +21,6 @@ import logging
 import base64
 import os
 
-# Configure logging to show INFO level messages
-logging.basicConfig(level=logging.INFO, format='%(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 

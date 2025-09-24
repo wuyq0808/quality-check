@@ -5,12 +5,20 @@ Uses prompt-based evaluation by invoking the browser evaluation method
 """
 
 import json
+import logging
 from datetime import datetime, timezone
+from enum import Enum
 
 from strands import Agent
 from strands.models import BedrockModel
 from strands_browser_direct import evaluate_website_feature
 
+
+class Feature(Enum):
+    RELEVANCE_OF_TOP_LISTINGS = "relevance_of_top_listings"
+    AUTOCOMPLETE_FOR_DESTINATIONS_HOTELS = "autocomplete_for_destinations_hotels"
+
+logging.basicConfig(level=logging.INFO, format='%(name)s - %(levelname)s - %(message)s')
 
 def process_and_save_result(website_url, result):
     """Process and save a single recording result"""
@@ -60,8 +68,10 @@ def create_quality_evaluator():
         model=bedrock_model,
         tools=[],  # No tools - pure prompt-based agent
         system_prompt="""
-You are a senior web product manager. 
+You are a senior web product manager.
 Analyze the recorded observations of navigating the sites, Evaluate the features of multiple websites.
+Be subjective and critical in your evaluations - we need honest truth, not praise.
+Point out usability issues, confusing interfaces, slow performance, and any problems you encounter.
 
 Rating Definition
 1 - Terrible
@@ -80,10 +90,11 @@ Polished and competitive
 Best-in-class; highly competitive
 
 ## Output Template
-| Cases   | Skyscanner | (Website 2) | (and so on) |
+# Feature: [Feature Name Being Tested]
+| Checks   | Skyscanner | (Website 2) | (and so on) |
 |-----------|-----------------------------|-------------------------------|-------------|
-| Case 1 | 6/7 – Rationale              | 5/7 – Rationale                | (and so on) |
-| Case 2 | 6/7 – Rationale             | 5/7 – Rationale                | (and so on) |
+| Check 1 | 6/7 – Rationale              | 5/7 – Rationale                | (and so on) |
+| Check 2 | 6/7 – Rationale             | 5/7 – Rationale                | (and so on) |
 ### Summary
 - **Skyscanner**  
   - standout strengths  
@@ -97,126 +108,20 @@ Best-in-class; highly competitive
     return agent
 
 
-if __name__ == "__main__":
-    import concurrent.futures
-    from strands_browser_direct import evaluate_website_feature
-
-def get_test_scenarios(scenario_name):
-    """Get test scenario by name"""
-    current_time = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
-
-    scenarios = {
-        "hotel_search_quality": {
-            "websites": [
-                {
-                    "url": "https://www.agoda.com",
-                    "website_instructions": ""
-                },
-                {
-                    "url": "https://www.google.com/travel/hotels",
-                    "website_instructions": ""
-                },
-                {
-                    "url": "https://www.booking.com",
-                    "website_instructions": "Close overlay modal about Sign In."
-                },
-                {
-                    "url": "https://www.skyscanner.com/hotels",
-                    "website_instructions": ""
-                }
-            ],
-            "feature_instruction": f"""
-Current time: {current_time}
-
-Steps:
-1. Find the destination input,
-2. Input destination: Barcelona.
-3. Select check-in: now+7d; check-out: now+8d.
-4. Wait for the search result.
-Intent Alignment Check: Verify that the top listings align with user intent (e.g. centrally located, well-reviewed, reasonably priced options appear first).
-
-Cases:
-1. Review Score Relevance Check: Confirm that top listings include hotels with strong guest scores unless filters or sorting override it.
-2. Star Rating vs Price Balance Check: Ensure that the first few listings represent a healthy mix of quality (e.g. 3–5 star) and value, rather than skewing too heavily toward one end.
-3. Repeat Search Consistency Check: Repeat the same search multiple times and check if the top listings remain consistent unless filters, sort, or availability changes.
-4. Local Context Appropriateness Check: For destination-specific searches (e.g. Tokyo city center), verify that top listings are contextually appropriate (e.g. located in Shinjuku rather than suburban outskirts).
-            """
-        },
-
-
-
-        "autocomplete_feature": {
-            "websites": [
-                # {
-                #     "url": "https://www.agoda.com",
-                #     "instructions": ""
-                # },
-                # {
-                #     "url": "https://www.google.com/travel/hotels",
-                #     "instructions": ""
-                # },
-                {
-                    "url": "https://www.booking.com",
-                    "website_instructions": "Close overlay modal about Sign In."
-                },
-                {
-                    "url": "https://www.skyscanner.com/hotels",
-                    "website_instructions": ""
-                }
-            ],
-            "feature_instruction": f"""
-Current time: {current_time}
-
-Test and record interactions with the auto-complete feature for hotel destinations:
-
-Destination: Barcelona
-
-Steps:
-1. Find the search box for hotel destinations
-2. Record all interactions with the auto complete feature
-
-Cases:
-1. Type in City name, does the main city destination show as the first results?
-2. Type in City name check if relevant POI's show up
-3. Type in City name check if POI's are all in the same language
-4. Type in City name with typo, check if it can handle typo and show the correct city name - MUST try more then enough variations to be thorough
-            """
-        }
-    }
-
-    return scenarios[scenario_name]
-
-if __name__ == "__main__":
-    import concurrent.futures
-    from strands_browser_direct import evaluate_website_feature
-
-    # Choose which scenario to run
-    scenario = get_test_scenarios("autocomplete_feature")
-    # scenario = get_test_scenarios("hotel_search_quality")
-
-    feature_instruction = scenario["feature_instruction"]
-    websites = scenario["websites"]
-    print("🎯 Starting evaluation")
-    print("=" * 60)
-
-    # Execute evaluations sequentially - call evaluate_website_feature with complete prompt
+def execute_website_evaluations(websites, feature_instruction):
+    """Execute evaluations for all websites sequentially"""
     results = {}
 
-    for config in websites:
-        website_url = config['url']
+    for website in websites:
+        website_url = website['url']
         print(f"🔄 Starting evaluation for {website_url}")
 
         try:
-            # Create complete prompt combining website URL, feature instruction, and specific instructions
-            website_instructions = config['website_instructions']
-            website_specific_instruction = f"\nWebsite-specific instructions:\n{website_instructions}\n" if website_instructions else ""
+            feature_prompt = f"""Navigate to {website_url} and execute the following:
+{feature_instruction}
+"""
 
-            complete_prompt = f"""Navigate to {website_url} and evaluate the following:
-
-{feature_instruction}{website_specific_instruction}
-Please test thoroughly and document all your observations."""
-
-            result = evaluate_website_feature(complete_prompt)
+            result = evaluate_website_feature(feature_prompt, website_key=website.get('key'))
             results[website_url] = result
             print(f"✅ Completed evaluation for {website_url}")
 
@@ -231,18 +136,18 @@ Please test thoroughly and document all your observations."""
             # Process and save error result immediately
             process_and_save_result(website_url, error_result)
 
-    print("\n" + "=" * 60)
-    print("📊 EVALUATION RESULTS")
-    print("=" * 60)
+    return results
 
-    # Generate comparison using QualityEvaluator agent
+
+def generate_feature_comparison(feature, feature_instruction, websites, results):
+    """Generate comparison analysis using QualityEvaluator agent"""
     print("\n🤖 Generating comparison analysis...")
     evaluator = create_quality_evaluator()
 
     # Build comparison prompt for all websites
     website_results = []
-    for i, config in enumerate(websites, 1):
-        website_url = config['url']
+    for i, website in enumerate(websites, 1):
+        website_url = website['url']
         website_results.append(f"Website {i}: {website_url}")
         website_results.append(f"Results {i}: {results[website_url]}")
         website_results.append("")
@@ -250,12 +155,12 @@ Please test thoroughly and document all your observations."""
     comparison_prompt = f"""
     Based on these detailed recording sessions that were produced by executing the following test request, evaluate and compare:
 
-Feature Test Instructions:
+Feature: {feature.value.replace("_", " ").title()}
+
+Feature checks:
 {feature_instruction}
 
-Website-specific instructions were also provided for each site.
-
-Recording Results from executing the above test:
+Recording Results from executing the above checks:
 {"\n".join(website_results)}
     """
 
@@ -274,6 +179,77 @@ Recording Results from executing the above test:
         f.write(str(comparison_result))
 
     print(f"📄 Comparison analysis saved to: {comparison_filepath}")
-    print(f"\n🔍 Comparison Analysis:\n{comparison_result}")
 
-    print("\n🎉 Quality evaluation completed!")
+
+# Common website list for all features
+WEBSITES = [
+    {
+        "url": "https://www.agoda.com",
+        "key": "agoda_com"
+    },
+    {
+        "url": "https://www.google.com/travel/hotels",
+        "key": "google_travel_hotels"
+    },
+    {
+        "url": "https://www.booking.com",
+        "key": "booking_com"
+    },
+    {
+        "url": "https://www.skyscanner.com/hotels",
+        "key": "skyscanner_hotels"
+    }
+]
+
+def get_test_features(feature):
+    """Get test feature by name"""
+    match feature:
+        case Feature.AUTOCOMPLETE_FOR_DESTINATIONS_HOTELS:
+            return """
+Test and record interactions with the auto-complete feature for hotel destinations:
+
+Destination: Barcelona
+
+Steps:
+1. Find the search box for hotel destinations and do the following:
+
+Checks:
+1. Type in City name, does the main city destination show as the first results?
+2. Type in City name check if relevant POI's show up
+3. Type in City name check if POI's are all in the same language
+4. Type in City name with typo, check if it can handle typo and show the correct city name (MUST try more then enough variations to be thorough)
+            """
+        case Feature.RELEVANCE_OF_TOP_LISTINGS:
+            return """
+Steps:
+1. Find the destination input,
+2. Input destination: Barcelona.
+3. Select check-in: today; check-out: tomorrow.
+4. Select 2 adults, 1 room
+5. Click search, wait for result.
+
+Checks:
+1. Intent Alignment Check: Verify that the top listings align with user intent (e.g. centrally located, well-reviewed, reasonably priced options appear first).
+2. Review Score Relevance Check: Confirm that top listings include hotels with strong guest scores unless filters or sorting override it.
+3. Star Rating vs Price Balance Check: Ensure that the first few listings represent a healthy mix of quality (e.g. 3–5 star) and value, rather than skewing too heavily toward one end.
+4. Repeat Search Consistency Check: Repeat the same search multiple times and check if the top listings remain consistent unless filters, sort, or availability changes. (REFRESH THE PAGE AND SEARCH AGAIN TO MAKE SURE IT IS RENEWED)
+5. Local Context Appropriateness Check: For destination-specific searches (e.g. Tokyo city center), verify that top listings are contextually appropriate (e.g. located in Shinjuku rather than suburban outskirts).
+            """
+        case _:
+            raise ValueError(f"Unknown feature: {feature}")
+
+
+if __name__ == "__main__":
+    import concurrent.futures
+    from strands_browser_direct import evaluate_website_feature
+
+    # Choose which feature to run
+    feature = Feature.RELEVANCE_OF_TOP_LISTINGS
+    # feature = Feature.AUTOCOMPLETE_FOR_DESTINATIONS_HOTELS
+    feature_instruction = get_test_features(feature)
+
+    # Execute evaluations sequentially
+    results = execute_website_evaluations(WEBSITES, feature_instruction)
+
+    # Generate comparison analysis
+    generate_feature_comparison(feature, feature_instruction, WEBSITES, results)
