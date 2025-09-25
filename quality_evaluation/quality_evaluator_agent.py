@@ -21,7 +21,7 @@ class Feature(Enum):
 
 logging.basicConfig(level=logging.INFO, format='%(name)s - %(levelname)s - %(message)s')
 
-def process_and_save_result(website_url, result):
+def process_and_save_result(website_key, result):
     """Process and save a single recording result"""
     import os
 
@@ -29,7 +29,7 @@ def process_and_save_result(website_url, result):
     output_dir = "quality_evaluation_output"
     os.makedirs(output_dir, exist_ok=True)
 
-    print(f"\n🌐 Website: {website_url}")
+    print(f"\n🌐 Website: {website_key}")
     print("-" * 40)
     if isinstance(result, str) and "Error:" not in result:
         print(result)
@@ -37,9 +37,8 @@ def process_and_save_result(website_url, result):
         print(f"❌ {result}")
 
     # Save recording result to timestamped file
-    website_name = website_url.replace("https://www.", "").replace("https://", "").replace("/", "_")
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"{website_name}_recording_{timestamp}.md"
+    filename = f"{website_key}_recording_{timestamp}.md"
     filepath = os.path.join(output_dir, filename)
 
     with open(filepath, "w") as f:
@@ -127,7 +126,7 @@ def execute_website_evaluations(websites, feature_instruction):
             print(f"✅ Completed evaluation for {website_url}")
 
             # Process and save result immediately
-            process_and_save_result(website_url, result)
+            process_and_save_result(website.get('key'), result)
 
         except Exception as exc:
             print(f"❌ {website_url} generated an exception: {exc}")
@@ -135,7 +134,7 @@ def execute_website_evaluations(websites, feature_instruction):
             results[website_url] = error_result
 
             # Process and save error result immediately
-            process_and_save_result(website_url, error_result)
+            process_and_save_result(website.get('key'), error_result)
 
     return results
 
@@ -182,25 +181,54 @@ Recording Results from executing the above checks:
     print(f"📄 Comparison analysis saved to: {comparison_filepath}")
 
 
+# Individual website constants
+GOOGLE_TRAVEL = {
+    "url": "https://www.google.com/travel/search",
+    "key": "google_travel_hotels"
+}
+
+AGODA = {
+    "url": "https://www.agoda.com",
+    "key": "agoda_com"
+}
+
+BOOKING_COM = {
+    "url": "https://www.booking.com",
+    "key": "booking_com"
+}
+
+SKYSCANNER_HOTELS = {
+    "url": "https://www.skyscanner.com/hotels",
+    "key": "skyscanner_hotels"
+}
+
 # Common website list for all features
 WEBSITES = [
-    {
-        "url": "https://www.google.com/travel/search",
-        "key": "google_travel_hotels"
-    },
-    {
-        "url": "https://www.agoda.com",
-        "key": "agoda_com"
-    },
-    {
-        "url": "https://www.booking.com",
-        "key": "booking_com"
-    },
-    {
-        "url": "https://www.skyscanner.com/hotels",
-        "key": "skyscanner_hotels"
-    },
+    GOOGLE_TRAVEL,
+    AGODA,
+    BOOKING_COM,
+    SKYSCANNER_HOTELS,
 ]
+
+def get_feature_websites(feature):
+    """Get websites to test for a specific feature"""
+    match feature:
+        case Feature.AUTOCOMPLETE_FOR_DESTINATIONS_HOTELS:
+            return WEBSITES
+
+        case Feature.RELEVANCE_OF_TOP_LISTINGS:
+            return WEBSITES
+
+        case Feature.FIVE_PARTNERS_PER_HOTEL:
+            # Only use meta-search sites that show multiple partners
+            return [
+                GOOGLE_TRAVEL,
+                SKYSCANNER_HOTELS,
+            ]
+
+        case _:
+            return []
+
 
 def get_feature_prompt(feature, destination):
     """Get feature prompt by name with parameterized destination"""
@@ -260,11 +288,12 @@ if __name__ == "__main__":
 
     # Choose which feature to run
     feature = Feature.FIVE_PARTNERS_PER_HOTEL
-    
+
     feature_instruction = get_feature_prompt(feature, "Barcelona")
+    feature_websites = get_feature_websites(feature)
 
     # Execute evaluations sequentially
-    results = execute_website_evaluations(WEBSITES, feature_instruction)
+    results = execute_website_evaluations(feature_websites, feature_instruction)
 
     # Generate comparison analysis
-    generate_feature_comparison(feature, feature_instruction, WEBSITES, results)
+    generate_feature_comparison(feature, feature_instruction, feature_websites, results)

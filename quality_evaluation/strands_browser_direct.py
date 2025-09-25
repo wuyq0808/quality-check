@@ -18,18 +18,21 @@ from custom_browser import CustomAgentCoreBrowser
 WEBSITE_INSTRUCTIONS = {
     "google_travel_hotels": """
                     # For inputting text into the search box:
-                    Before typing, don't click the search box, never click the search box, must not click the search box,
-                    Don't clear the current search. Don't click the X.
-                    Directly type into the destination search box.
-                    When you need to change the search box text, just directly type into it, never click or try to clear it first.
-                    Must only use browser TypeAction with selector type into it.
-                    NEVER TRY OTHER CLICKING ACTIONS, THEY CAN NOT INPUT SUCCESSFULLY FOR THIS SITE.
-                    This selector is proved to be working: input[placeholder="Search for places, hotels and more"]
-                    Try TypeAction UNTIL YOU SUCCESS. Never clear the current search between tries.
-                    The destination input element is
-                    <input type="text" value="near Novena" jsname="yrriRe" jsaction="focus:h06R8; blur:zjh6rb" class="II2One j0Ppje zmMKJ LbIaRd" autocomplete="off" role="combobox" aria-autocomplete="inline" aria-haspopup="true" aria-expanded="false" placeholder="Search for places, hotels and more" aria-label="Search for places, hotels and more">
-                    or when clicked and has dropdown open:
-                    <input type="text" value="" jsname="yrriRe" jsaction="focus:h06R8; blur:zjh6rb" class="II2One j0Ppje zmMKJ LbIaRd" autocomplete="off" role="combobox" aria-autocomplete="both" aria-haspopup="true" aria-expanded="true" placeholder="Search for places, hotels and more" aria-label="Search for places, hotels and more" autofocus="" aria-owns="h0T7hb-9">
+                        Before typing, don't click the search box, never click the search box, must not click the search box,
+                        Don't clear the current search. Don't click the X.
+                        Directly type into the destination search box.
+                        When you need to change the search box text, just directly type into it, never click or try to clear it first.
+                        Must only use browser TypeAction with selector type into it.
+                        NEVER TRY OTHER CLICKING ACTIONS, THEY CAN NOT INPUT SUCCESSFULLY FOR THIS SITE.
+                        This selector is proved to be working: input[placeholder="Search for places, hotels and more"]
+                        Try TypeAction UNTIL YOU SUCCESS. Never clear the current search between tries.
+                        The destination input element is
+                        <input type="text" value="near Novena" jsname="yrriRe" jsaction="focus:h06R8; blur:zjh6rb" class="II2One j0Ppje zmMKJ LbIaRd" autocomplete="off" role="combobox" aria-autocomplete="inline" aria-haspopup="true" aria-expanded="false" placeholder="Search for places, hotels and more" aria-label="Search for places, hotels and more">
+                        or when clicked and has dropdown open:
+                        <input type="text" value="" jsname="yrriRe" jsaction="focus:h06R8; blur:zjh6rb" class="II2One j0Ppje zmMKJ LbIaRd" autocomplete="off" role="combobox" aria-autocomplete="both" aria-haspopup="true" aria-expanded="true" placeholder="Search for places, hotels and more" aria-label="Search for places, hotels and more" autofocus="" aria-owns="h0T7hb-9">
+                    # For hotel partners offering counting:
+                        - Skip sponsored listings. They are provide by 1 partner only.
+                        - Don't use screenshot to count. It's too slow. Use HTML data to extract the number of partners for each hotel.
                     """,
 
     "booking_com": "Click outside of the calendar to close it if dates are correct",
