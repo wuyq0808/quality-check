@@ -155,6 +155,7 @@ Temporary Items
 
 # Project specific
 screenshots/
+test_browser_simple_screenshots/
 recording_config.json
 website_evaluation_*.md
 quality_evaluation_output/*

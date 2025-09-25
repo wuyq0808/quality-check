@@ -9,6 +9,7 @@ Simple browser test script - Direct Playwright browser usage
 
 import asyncio
 import logging
+import os
 from strands_tools.browser import AgentCoreBrowser
 from playwright.async_api import async_playwright
 
@@ -57,6 +58,10 @@ def setup_chrome_linux_browser(browser_tool, page):
 def test_browser_session():
     """Test basic browser session lifecycle with direct Playwright browser"""
 
+    # Create screenshots directory
+    screenshots_dir = "test_browser_simple_screenshots"
+    os.makedirs(screenshots_dir, exist_ok=True)
+
     # Configure browser tool with AgentCore
     custom_browser_id = "recordingBrowserWithS3_20250916170045-Ec92oniUSi"
     browser_tool = AgentCoreBrowser(
@@ -88,8 +93,8 @@ def test_browser_session():
         browser_tool._execute_async(asyncio.sleep(3))  # Wait 3 seconds
 
         print("📸 Taking initial screenshot...")
-        browser_tool._execute_async(page.screenshot(path="google_travel_initial.png"))
-        print(f"Screenshot saved: google_travel_initial.png")
+        browser_tool._execute_async(page.screenshot(path="test_browser_simple_screenshots/google_travel_initial.png"))
+        print(f"Screenshot saved: test_browser_simple_screenshots/google_travel_initial.png")
         browser_tool._execute_async(asyncio.sleep(5))  # Wait 5 seconds
 
         print("⌨️ Filling input with 'A' using page.fill()...")
@@ -98,8 +103,8 @@ def test_browser_session():
         browser_tool._execute_async(asyncio.sleep(5))  # Wait 5 seconds
 
         print("📸 Taking final screenshot...")
-        browser_tool._execute_async(page.screenshot(path="google_travel_after_fill.png"))
-        print(f"Final screenshot saved: google_travel_after_fill.png")
+        browser_tool._execute_async(page.screenshot(path="test_browser_simple_screenshots/google_travel_after_fill.png"))
+        print(f"Final screenshot saved: test_browser_simple_screenshots/google_travel_after_fill.png")
 
         print("✅ Test completed successfully!")
 
