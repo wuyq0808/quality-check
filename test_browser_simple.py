@@ -87,24 +87,33 @@ def test_browser_session():
         # Setup Chrome Linux browser emulation
         setup_chrome_linux_browser(browser_tool, page)
 
-        print("🌐 Navigating to Google Travel Hotels...")
-        result = browser_tool._execute_async(page.goto("https://www.google.com/travel/search"))
+        print("🌐 Navigating to Skyscanner Hotels...")
+        result = browser_tool._execute_async(page.goto("https://www.skyscanner.com/hotels"))
         print(f"Navigation result: {result}")
         browser_tool._execute_async(asyncio.sleep(3))  # Wait 3 seconds
 
         print("📸 Taking initial screenshot...")
-        browser_tool._execute_async(page.screenshot(path="test_browser_simple_screenshots/google_travel_initial.png"))
-        print(f"Screenshot saved: test_browser_simple_screenshots/google_travel_initial.png")
-        browser_tool._execute_async(asyncio.sleep(5))  # Wait 5 seconds
+        browser_tool._execute_async(page.screenshot(path="test_browser_simple_screenshots/skyscanner_initial.png"))
+        print(f"Screenshot saved: test_browser_simple_screenshots/skyscanner_initial.png")
+        browser_tool._execute_async(asyncio.sleep(15))  # Wait 10 seconds
 
-        print("⌨️ Filling input with 'A' using page.fill()...")
-        browser_tool._execute_async(page.fill('input[placeholder="Search for places, hotels and more"]', "ABCD 1234"))
-        print("Filled 'A' using page.fill()")
-        browser_tool._execute_async(asyncio.sleep(5))  # Wait 5 seconds
+        print("🖱️ Pressing PRESS & HOLD button at specific coordinates...")
+        # Use coordinates from the screenshot
+        x = 755
+        y = 485
+        print(f"Pressing button at coordinates: ({x}, {y})")
+
+        browser_tool._execute_async(page.mouse.move(x, y))
+        browser_tool._execute_async(page.mouse.down())
+        browser_tool._execute_async(asyncio.sleep(30))  # Hold duration
+        browser_tool._execute_async(page.mouse.up())
+        print("Completed press & hold action")
+
+        browser_tool._execute_async(asyncio.sleep(120))  # Wait 5 seconds for response
 
         print("📸 Taking final screenshot...")
-        browser_tool._execute_async(page.screenshot(path="test_browser_simple_screenshots/google_travel_after_fill.png"))
-        print(f"Final screenshot saved: test_browser_simple_screenshots/google_travel_after_fill.png")
+        browser_tool._execute_async(page.screenshot(path="test_browser_simple_screenshots/skyscanner_after_button.png"))
+        print(f"Final screenshot saved: test_browser_simple_screenshots/skyscanner_after_button.png")
 
         print("✅ Test completed successfully!")
 

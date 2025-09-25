@@ -11,6 +11,7 @@ from enum import Enum
 
 from strands import Agent
 from strands.models import BedrockModel
+from tenacity import Retrying, stop_after_attempt, wait_exponential, retry_if_exception
 from strands_browser_direct import evaluate_website_feature
 
 
@@ -18,6 +19,7 @@ class Feature(Enum):
     RELEVANCE_OF_TOP_LISTINGS = "relevance_of_top_listings"
     AUTOCOMPLETE_FOR_DESTINATIONS_HOTELS = "autocomplete_for_destinations_hotels"
     FIVE_PARTNERS_PER_HOTEL = "five_partners_per_hotel"
+    HERO_POSITION_PARTNER_MIX = "hero_position_partner_mix"
 
 logging.basicConfig(level=logging.INFO, format='%(name)s - %(levelname)s - %(message)s')
 
@@ -121,7 +123,14 @@ def execute_website_evaluations(websites, feature_instruction):
 {feature_instruction}
 """
 
-            result = evaluate_website_feature(feature_prompt, website_key=website.get('key'))
+            # Use explicit Retrying object for deterministic retry behavior
+            retrying = Retrying(
+                stop=stop_after_attempt(3),
+                wait=wait_exponential(multiplier=1, min=4, max=10),
+                retry=retry_if_exception(Exception)
+            )
+
+            result = retrying(evaluate_website_feature, feature_prompt, website_key=website.get('key'))
             results[website_url] = result
             print(f"✅ Completed evaluation for {website_url}")
 
@@ -222,8 +231,15 @@ def get_feature_websites(feature):
         case Feature.FIVE_PARTNERS_PER_HOTEL:
             # Only use meta-search sites that show multiple partners
             return [
-                GOOGLE_TRAVEL,
                 SKYSCANNER_HOTELS,
+                GOOGLE_TRAVEL,
+            ]
+
+        case Feature.HERO_POSITION_PARTNER_MIX:
+            # Only use meta-search sites that show multiple partners
+            return [
+                SKYSCANNER_HOTELS,
+                GOOGLE_TRAVEL,
             ]
 
         case _:
@@ -277,7 +293,23 @@ Steps:
 
 Checks:
 1. Check 10 hotels in hotel search results to see if >= 5 partners offering rates for each hotel. Count the number of booking partners/providers shown for each of the first 10 hotels in the search results.
-            """    
+            """
+
+        case Feature.HERO_POSITION_PARTNER_MIX:
+            return f"""
+Steps:
+1. Find the destination input,
+2. Input destination: {destination}.
+3. Select check-in: today; check-out: tomorrow.
+4. Select 2 adults, 1 room
+5. Click search, wait for result.
+
+Checks:
+1. Top Position Partner Variation Check: Perform multiple hotel searches and verify that the top (hero) result features a varied mix of partners over time and across queries. Document which partner appears in the top position for each search.
+2. Partner Distribution Diversity Check: Check if the first few hotel cards (top 5 results) represent a healthy mix of different booking partners rather than being dominated by a single one. Count and document partner distribution.
+3. Fair Rotation Across Markets Check: Run hotel searches across multiple regions or cities and check if local and global partners are fairly represented in the hero position mix. (Try other cities then just {destination})
+            """
+
         case _:
             raise ValueError(f"Unknown feature: {feature}")
 

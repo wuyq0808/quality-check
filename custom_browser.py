@@ -34,6 +34,25 @@ class ClickCoordinateAction(BaseModel):
     description: Optional[str] = "Click at coordinates"
 
 
+class PressAndHoldAction(BaseModel):
+    """Action model for pressing and holding at current mouse position"""
+    type: Literal["press_and_hold"] = "press_and_hold"
+    hold_time: float  # Hold duration in seconds
+    session_name: str
+    description: Optional[str] = "Press and hold mouse button at current position"
+
+
+class HumanMouseAction(BaseModel):
+    """Action model for human-like mouse movements and interactions"""
+    type: Literal["human_mouse_move"] = "human_mouse_move"
+    start_x: int  # Starting X coordinate
+    start_y: int  # Starting Y coordinate
+    end_x: int  # Ending X coordinate
+    end_y: int  # Ending Y coordinate
+    session_name: str
+    description: Optional[str] = "Simulate human-like mouse movements and natural clicking"
+
+
 class CustomBrowserInput(BaseModel):
     """Extended BrowserInput with custom coordinate click action"""
     action: Union[
@@ -60,8 +79,10 @@ class CustomBrowserInput(BaseModel):
         NetworkInterceptAction,
         ExecuteCdpAction,
         CloseAction,
-        # Our custom action
+        # Our custom actions
         ClickCoordinateAction,
+        PressAndHoldAction,
+        HumanMouseAction,
     ] = Field(discriminator="type")
     wait_time: Optional[int] = Field(default=2, description="Time to wait after action in seconds")
 
@@ -176,9 +197,13 @@ class CustomAgentCoreBrowser(AgentCoreBrowser):
         else:
             action = browser_input.action
 
-        # CUSTOM OVERRIDE: Handle our coordinate click action
+        # CUSTOM OVERRIDE: Handle our custom actions
         if isinstance(action, ClickCoordinateAction):
             return self.click_coordinate(action)
+        elif isinstance(action, PressAndHoldAction):
+            return self.press_and_hold(action)
+        elif isinstance(action, HumanMouseAction):
+            return self.human_mouse_move(action)
 
         # Delegate all other actions to parent class
         # Convert back to original BrowserInput for parent compatibility
@@ -191,6 +216,14 @@ class CustomAgentCoreBrowser(AgentCoreBrowser):
     def click_coordinate(self, action: ClickCoordinateAction) -> Dict[str, Any]:
         """Handle coordinate click action"""
         return self._execute_async(self._async_click_coordinate(action))
+
+    def press_and_hold(self, action: PressAndHoldAction) -> Dict[str, Any]:
+        """Handle press and hold action"""
+        return self._execute_async(self._async_press_and_hold(action))
+
+    def human_mouse_move(self, action: HumanMouseAction) -> Dict[str, Any]:
+        """Handle human-like mouse movements and interactions"""
+        return self._execute_async(self._async_human_mouse_move(action))
 
     async def _async_click_coordinate(self, action: ClickCoordinateAction) -> Dict[str, Any]:
         """Async click at specific pixel coordinates implementation"""
@@ -242,6 +275,127 @@ class CustomAgentCoreBrowser(AgentCoreBrowser):
         except Exception as e:
             logger.error(f"failed to click at coordinates in session {session_name}: {str(e)}")
             return {"status": "error", "content": [{"text": f"Failed to click at coordinates: {str(e)}"}]}
+
+    async def _async_press_and_hold(self, action: PressAndHoldAction) -> Dict[str, Any]:
+        """Async press and hold at specific pixel coordinates implementation"""
+        session_name = action.session_name
+
+        # Check if session exists
+        if session_name not in self._sessions:
+            return {"status": "error", "content": [{"text": f"Session '{session_name}' not found"}]}
+
+        try:
+            session = self._sessions[session_name]
+            page = session.get_active_page()
+
+            # Press down, hold, then release
+            await page.mouse.down()
+            await asyncio.sleep(action.hold_time)
+            await page.mouse.up()
+
+            return {
+                "status": "success",
+                "content": [
+                    {
+                        "json": {
+                            "action": "press_and_hold",
+                            "holdTime": action.hold_time,
+                            "sessionName": session_name
+                        }
+                    }
+                ],
+            }
+
+        except Exception as e:
+            logger.error(f"failed to press and hold at coordinates in session {session_name}: {str(e)}")
+            return {"status": "error", "content": [{"text": f"Failed to press and hold at coordinates: {str(e)}"}]}
+
+    async def _async_human_mouse_move(self, action: HumanMouseAction) -> Dict[str, Any]:
+        """Async human-like mouse movements and interactions implementation"""
+        import math
+        import random
+
+        session_name = action.session_name
+
+        # Check if session exists
+        if session_name not in self._sessions:
+            return {"status": "error", "content": [{"text": f"Session '{session_name}' not found"}]}
+
+        try:
+            session = self._sessions[session_name]
+            page = session.get_active_page()
+
+            # Hardcoded human-like behavior sequence
+            # 1. Move naturally from start to end with curve
+            await self._human_move_with_curve(page, action.start_x, action.start_y, action.end_x, action.end_y)
+
+            # 2. Small pause after movement (human-like settling)
+            await asyncio.sleep(random.uniform(0.1, 0.3))
+
+            # 3. Small mouse movement after positioning (natural hand tremor)
+            await asyncio.sleep(random.uniform(0.05, 0.1))
+            await page.mouse.move(
+                action.end_x + random.uniform(-2, 2),
+                action.end_y + random.uniform(-2, 2)
+            )
+
+            return {
+                "status": "success",
+                "content": [
+                    {
+                        "json": {
+                            "action": "human_mouse_move",
+                            "start_coordinates": {"x": action.start_x, "y": action.start_y},
+                            "end_coordinates": {"x": action.end_x, "y": action.end_y},
+                            "sessionName": session_name
+                        }
+                    }
+                ],
+            }
+
+        except Exception as e:
+            logger.error(f"failed to perform human mouse action in session {session_name}: {str(e)}")
+            return {"status": "error", "content": [{"text": f"Failed to perform human mouse action: {str(e)}"}]}
+
+    async def _human_move_with_curve(self, page, start_x, start_y, end_x, end_y):
+        """Generate natural curved mouse movement from start to end"""
+        import math
+        import random
+
+        # Calculate movement parameters
+        distance = math.sqrt((end_x - start_x)**2 + (end_y - start_y)**2)
+        steps = max(8, int(distance / 10))
+
+        # Create slight curve for natural movement
+        mid_x = (start_x + end_x) / 2
+        mid_y = (start_y + end_y) / 2
+
+        # Add perpendicular offset for curve
+        if distance > 5:  # Only add curve for longer movements
+            angle = math.atan2(end_y - start_y, end_x - start_x)
+            curve_offset = distance * 0.2 * random.uniform(0.3, 0.8)
+            ctrl_x = mid_x + math.cos(angle + math.pi/2) * curve_offset
+            ctrl_y = mid_y + math.sin(angle + math.pi/2) * curve_offset
+        else:
+            ctrl_x, ctrl_y = mid_x, mid_y
+
+        # Move in steps with variable timing
+        for i in range(steps + 1):
+            t = i / steps
+
+            # Bezier curve calculation
+            x = (1-t)**2 * start_x + 2*(1-t)*t * ctrl_x + t**2 * end_x
+            y = (1-t)**2 * start_y + 2*(1-t)*t * ctrl_y + t**2 * end_y
+
+            # Add micro-jitter
+            x += random.uniform(-0.5, 0.5)
+            y += random.uniform(-0.5, 0.5)
+
+            await page.mouse.move(int(x), int(y))
+
+            # Variable speed - slower at start/end
+            speed_factor = 1 - abs(0.5 - t) * 0.4
+            await asyncio.sleep(0.02 + speed_factor * 0.03)
 
     async def _async_screenshot(self, action: ScreenshotAction) -> Dict[str, Any]:
         """CUSTOM OVERRIDE: Take screenshot and return base64 image data for LLM vision"""
