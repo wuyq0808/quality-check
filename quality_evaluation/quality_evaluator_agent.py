@@ -185,6 +185,10 @@ Recording Results from executing the above checks:
 # Common website list for all features
 WEBSITES = [
     {
+        "url": "https://www.google.com/travel/search",
+        "key": "google_travel_hotels"
+    },
+    {
         "url": "https://www.agoda.com",
         "key": "agoda_com"
     },
@@ -195,10 +199,6 @@ WEBSITES = [
     {
         "url": "https://www.skyscanner.com/hotels",
         "key": "skyscanner_hotels"
-    },
-    {
-        "url": "https://www.google.com/travel/hotels",
-        "key": "google_travel_hotels"
     },
 ]
 

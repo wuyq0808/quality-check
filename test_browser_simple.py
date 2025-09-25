@@ -14,6 +14,46 @@ from playwright.async_api import async_playwright
 
 logging.basicConfig(level=logging.INFO)
 
+def setup_chrome_linux_browser(browser_tool, page):
+    """Setup browser to mimic Chrome on Linux"""
+    print("🐧 Setting Chrome Linux headers...")
+    browser_tool._execute_async(page.set_extra_http_headers({
+        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36',
+    }))
+
+    print("🎭 Overriding browser detection properties with evaluate...")
+    browser_tool._execute_async(page.evaluate("""() => {
+        // Remove webdriver property
+        Object.defineProperty(navigator, 'webdriver', {
+            get: () => undefined,
+            configurable: true
+        });
+
+        // Override userAgent to match Chrome Linux
+        Object.defineProperty(navigator, 'userAgent', {
+            get: () => 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36',
+            configurable: true
+        });
+
+        // Override platform to match Linux
+        Object.defineProperty(navigator, 'platform', {
+            get: () => 'Linux x86_64',
+            configurable: true
+        });
+    }"""))
+
+    print("Checking overridden browser properties...")
+    browser_properties = browser_tool._execute_async(page.evaluate("""() => {
+        return {
+            userAgent: navigator.userAgent,
+            platform: navigator.platform,
+            webdriver: navigator.webdriver
+        };
+    }"""))
+    print("Browser properties after override:")
+    for key, value in browser_properties.items():
+        print(f"  {key}: {value}")
+
 def test_browser_session():
     """Test basic browser session lifecycle with direct Playwright browser"""
 
@@ -39,24 +79,17 @@ def test_browser_session():
         pages = playwright_browser.contexts[0].pages
         page = pages[0] if pages else browser_tool._execute_async(playwright_browser.contexts[0].new_page())
 
-        print("🌐 Navigating to https://www.google.com/travel/hotels...")
-        result = browser_tool._execute_async(page.goto("https://www.google.com/travel/hotels"))
+        # Setup Chrome Linux browser emulation
+        setup_chrome_linux_browser(browser_tool, page)
+
+        print("🌐 Navigating to Google Travel Hotels...")
+        result = browser_tool._execute_async(page.goto("https://www.google.com/travel/search"))
         print(f"Navigation result: {result}")
-        browser_tool._execute_async(asyncio.sleep(5))  # Wait 5 seconds
+        browser_tool._execute_async(asyncio.sleep(3))  # Wait 3 seconds
 
         print("📸 Taking initial screenshot...")
         browser_tool._execute_async(page.screenshot(path="google_travel_initial.png"))
         print(f"Screenshot saved: google_travel_initial.png")
-        browser_tool._execute_async(asyncio.sleep(5))  # Wait 5 seconds
-
-        print("🖱️ Clicking on destination input field...")
-        browser_tool._execute_async(page.mouse.click(95, 50))
-        print("Clicked on destination input field at (95, 50)")
-        browser_tool._execute_async(asyncio.sleep(5))  # Wait 5 seconds
-
-        print("📸 Taking screenshot after click...")
-        browser_tool._execute_async(page.screenshot(path="google_travel_after_click.png"))
-        print(f"Screenshot saved: google_travel_after_click.png")
         browser_tool._execute_async(asyncio.sleep(5))  # Wait 5 seconds
 
         print("⌨️ Filling input with 'A' using page.fill()...")
@@ -65,8 +98,8 @@ def test_browser_session():
         browser_tool._execute_async(asyncio.sleep(5))  # Wait 5 seconds
 
         print("📸 Taking final screenshot...")
-        browser_tool._execute_async(page.screenshot(path="google_travel_after_wait.png"))
-        print(f"Final screenshot saved: google_travel_after_wait.png")
+        browser_tool._execute_async(page.screenshot(path="google_travel_after_fill.png"))
+        print(f"Final screenshot saved: google_travel_after_fill.png")
 
         print("✅ Test completed successfully!")
 

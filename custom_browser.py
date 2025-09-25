@@ -20,6 +20,7 @@ from strands import tool
 import logging
 import base64
 import os
+import asyncio
 
 logger = logging.getLogger(__name__)
 
@@ -82,19 +83,16 @@ class CustomAgentCoreBrowser(AgentCoreBrowser):
             # Create new browser instance for this session
             session = await self.create_browser_session()
 
-            if isinstance(session, PlaywrightBrowser):
-                # Normal non-persistent case
-                session_browser = session
-                session_context = session_browser.contexts[0] if session_browser.contexts else await session_browser.new_context()
+            # Only support Playwright browser sessions
+            session_browser = session
+            session_context = session_browser.contexts[0] if session_browser.contexts else await session_browser.new_context()
 
-                # CUSTOM OVERRIDE: Get existing page or create new one (instead of always creating new)
-                pages = session_context.pages
-                session_page = pages[0] if pages else await session_context.new_page()
-            else:
-                # Persistent context case
-                session_context = session
-                session_browser = session_context.browser
-                session_page = await session_context.new_page()
+            # Get existing page or create new one
+            pages = session_context.pages
+            session_page = pages[0] if pages else await session_context.new_page()
+
+            # Setup Chrome Linux browser emulation
+            await self._setup_chrome_linux_browser(session_page)
 
             # Create and store session object
             session = BrowserSession(
@@ -125,6 +123,46 @@ class CustomAgentCoreBrowser(AgentCoreBrowser):
         except Exception as e:
             logger.error(f"failed to initialize session {session_name}: {str(e)}")
             return {"status": "error", "content": [{"text": f"Failed to initialize session: {str(e)}"}]}
+
+    async def _setup_chrome_linux_browser(self, page):
+        """Setup browser to mimic Chrome on Linux"""
+        logger.info("Setting Chrome Linux headers...")
+        await page.set_extra_http_headers({
+            'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36',
+        })
+
+        logger.info("Overriding browser detection properties with evaluate...")
+        await page.evaluate("""() => {
+            // Remove webdriver property
+            Object.defineProperty(navigator, 'webdriver', {
+                get: () => undefined,
+                configurable: true
+            });
+
+            // Override userAgent to match Chrome Linux
+            Object.defineProperty(navigator, 'userAgent', {
+                get: () => 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36',
+                configurable: true
+            });
+
+            // Override platform to match Linux
+            Object.defineProperty(navigator, 'platform', {
+                get: () => 'Linux x86_64',
+                configurable: true
+            });
+        }""")
+
+        logger.info("Checking overridden browser properties...")
+        browser_properties = await page.evaluate("""() => {
+            return {
+                userAgent: navigator.userAgent,
+                platform: navigator.platform,
+                webdriver: navigator.webdriver
+            };
+        }""")
+        logger.info("Browser properties after override:")
+        for key, value in browser_properties.items():
+            logger.info(f"  {key}: {value}")
 
     @tool
     def browser(self, browser_input: CustomBrowserInput) -> Dict[str, Any]:
