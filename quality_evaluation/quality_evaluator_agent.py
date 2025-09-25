@@ -189,17 +189,17 @@ WEBSITES = [
         "key": "agoda_com"
     },
     {
-        "url": "https://www.google.com/travel/hotels",
-        "key": "google_travel_hotels"
-    },
-    {
         "url": "https://www.booking.com",
         "key": "booking_com"
     },
     {
         "url": "https://www.skyscanner.com/hotels",
         "key": "skyscanner_hotels"
-    }
+    },
+    {
+        "url": "https://www.google.com/travel/hotels",
+        "key": "google_travel_hotels"
+    },
 ]
 
 def get_feature_prompt(feature, destination):
@@ -259,8 +259,8 @@ if __name__ == "__main__":
     from strands_browser_direct import evaluate_website_feature
 
     # Choose which feature to run
-    feature = Feature.RELEVANCE_OF_TOP_LISTINGS
-    # feature = Feature.AUTOCOMPLETE_FOR_DESTINATIONS_HOTELS
+    feature = Feature.FIVE_PARTNERS_PER_HOTEL
+    
     feature_instruction = get_feature_prompt(feature, "Barcelona")
 
     # Execute evaluations sequentially

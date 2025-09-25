@@ -32,7 +32,7 @@ WEBSITE_INSTRUCTIONS = {
                     <input type="text" value="" jsname="yrriRe" jsaction="focus:h06R8; blur:zjh6rb" class="II2One j0Ppje zmMKJ LbIaRd" autocomplete="off" role="combobox" aria-autocomplete="both" aria-haspopup="true" aria-expanded="true" placeholder="Search for places, hotels and more" aria-label="Search for places, hotels and more" autofocus="" aria-owns="h0T7hb-9">
                     """,
 
-    "booking_com": "Close overlay modal about Sign In.",
+    "booking_com": "Click outside of the calendar to close it if dates are correct",
 
     "agoda_com": "",
 
@@ -163,13 +163,10 @@ These website-specific instructions override all other instructions and have abs
         result = agent(feature_instruction)
 
         # Retrieve all stored observations
-        if observations:
-            observations_text = "\n".join([f"- {obs}" for obs in observations])
-            # Return both concise result and detailed stored observations
-            combined_result = f"{str(result)}\n\n## Detailed Records:\n{observations_text}"
-            return combined_result
-        else:
-            return str(result)
+        observations_text = "\n".join([f"- {obs}" for obs in observations])
+        # Return both concise result and detailed stored observations
+        combined_result = f"{str(result)}\n\n## Detailed Records:\n{observations_text}"
+        return combined_result
         
     except Exception as e:
         error_msg = f"Strands browser tool implementation failed: {str(e)}"
