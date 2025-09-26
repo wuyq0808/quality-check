@@ -282,7 +282,7 @@ Steps:
 4. Click search, wait for result.
 
 Checks:
-1. Check 10 hotels in hotel search results to see if >= 5 partners offering rates for each hotel. Count the number of booking partners/providers shown for each of the first 10 hotels in the search results.
+1. Check 5 hotels in hotel search results to see if >= 5 partners offering rates for each hotel. Count the number of booking partners/providers shown for each of the first 5 hotels in the search results.
             """
 
         case Feature.HERO_POSITION_PARTNER_MIX:
@@ -309,7 +309,7 @@ if __name__ == "__main__":
     from strands_browser_direct import evaluate_website_feature
 
     # Choose which feature to run
-    feature = Feature.RELEVANCE_OF_TOP_LISTINGS
+    feature = Feature.FIVE_PARTNERS_PER_HOTEL
 
     # Calculate check-in (tomorrow) and check-out (day after tomorrow) dates
     today = datetime.now()

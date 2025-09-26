@@ -34,7 +34,6 @@ WEBSITE_INSTRUCTIONS = {
                         <input type="text" value="" jsname="yrriRe" jsaction="focus:h06R8; blur:zjh6rb" class="II2One j0Ppje zmMKJ LbIaRd" autocomplete="off" role="combobox" aria-autocomplete="both" aria-haspopup="true" aria-expanded="true" placeholder="Search for places, hotels and more" aria-label="Search for places, hotels and more" autofocus="" aria-owns="h0T7hb-9">
                     # For hotel partners offering counting:
                         - Skip sponsored listings. They are provide by 1 partner only.
-                        - Don't use screenshot to count. It's too slow. Use HTML data to extract the number of partners for each hotel.
                     """,
 
     "booking_com": "",
@@ -60,7 +59,7 @@ WEBSITE_INSTRUCTIONS = {
                       - Always close the hotel details page tab when your done checking it.
 
                     # For hotel partners offer counting:
-                      - Click the hotel card, get into the hotel details page to count.
+                      - MUST Click the hotel card, get into the hotel details page to count. MUST get into the hotel details page.
                     """,
 }
 
@@ -129,9 +128,9 @@ You must use store_observation("text") to store detailed observations on every s
 - **Edge Cases**: What happens with unusual inputs, empty states, errors
 
 ## Output:
-DON'T OUTPUT ANYTHING AS THE END OF THE SESSION. All the details goes into memory storage (store_observation).
+Explain every step when you call tools.
 
-Structure for store_observation calls :
+Structure for store_observation calls:
 ## Testing Session: [Website] - [Feature]
 ### Step 1: [Action]
 - **What I did**: [specific action]
