@@ -17,6 +17,8 @@ from custom_browser import CustomAgentCoreBrowser
 # Website-specific instructions managed by key
 WEBSITE_INSTRUCTIONS = {
     "google_travel_hotels": """
+                    # For the calendar date picker:
+                      - Year is not displayed and default to the current year. Don't try to see or change the year.
                     # For inputting text into the search box:
                         Before typing, don't click the search box, never click the search box, must not click the search box,
                         Don't clear the current search. Don't click the X.
@@ -43,14 +45,22 @@ WEBSITE_INSTRUCTIONS = {
                     # Take snapshot right after the first navigation. You may be redirected to the page 'Are you a person or a robot'.
                       - Don't go to elsewhere. We must resolve the challenge.
                       - Use action human_mouse_move to the button, 
-                      - Then press_and_hold action to click the button for 5~10 seconds.
-                      - Then human_mouse_move to some random position and do some clicks.
-                      - And then must wait long enough for the page to load.
-                      - Repeat the process until you success. Refresh the page if needed.
-                    # If there's more than one tab opened
+                      - Then press_and_hold action to click the button for 7~12 seconds.
+                      - And then must wait long enough for the page to load. MUST WAIT LONG ENOUGH.
+                      - If it's longer than 2 minutes, do some more human_mouse_move and clicks.
+                      - NEVER USE OTHER ACTIONS. MUST USE THESE ACTIONS TO RESOLVE THE CHALLENGE.
+
+                    # Check-in / Check-out date pickers:
+                      - One for check-in, one for check-out. They are 2 different calanders.
+                      - When you selected check-in, the check-in calander will be closed.
+                      - Must take screenshot before/after every click to make sure.
+                    
+                    # Clicking a hotel card in search result page may open a new tab.
+                      - Must use 'list_tabs' action after clicking a hotel card in search result page.
                       - Always close the hotel details page tab when your done checking it.
-                    # For hotel partners offering counting:
-                        - Don't use screenshot to count. It's too slow. Use HTML data to extract the number of partners for each hotel.
+
+                    # For hotel partners offer counting:
+                      - Click the hotel card, get into the hotel details page to count.
                     """,
 }
 
@@ -84,7 +94,7 @@ def evaluate_website_feature(feature_instruction, website_key):
     browser_tool = CustomAgentCoreBrowser(
         region='us-east-1',
         identifier=custom_browser_id,
-        session_timeout=3600,  # 60 minutes
+        session_timeout=7200,  # 2h
     )
 
     # Create explicit Bedrock model with EU region (matching your AWS config)
@@ -94,28 +104,22 @@ def evaluate_website_feature(feature_instruction, website_key):
         temperature=0.1
     )
 
-    # Build system prompt with website instructions having HIGHEST PRIORITY
-    from datetime import datetime, timezone
-
     base_system_prompt = f"""
-Current time: {datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")}
-
 You are a detailed web interaction recorder and observer.
 Your job is to systematically document everything you see and do while testing website features.
 Be subjective and critical in your observations - we need honest truth, not praise.
 Point out usability issues, confusing interfaces, slow performance, and any problems you encounter.
 
-You have access to a memory system. Must use store_observation("text") to store key findings and observations on every step.
+You must use store_observation("text") to store detailed observations on every step. Store as much information as possible.
 
 ## Recording Protocol:
-1. Take screenshots at each major step - screenshots are the cardinal source of truth
+1. Take screenshots after every click - screenshots are the cardinal source of truth
 2. Use "click_coordinate" action with pixel coordinates to click elements based on visual analysis
-3. Use HTML to collect data for data-heavy pages (e.g., hotel search results, partner/provider offerings) where screenshots are in-efficient.
-4. Dismiss pop-ups, cookie banners using coordinate clicks once you see them
-5. After clicking on search, selecting hotel, or any clicking that may trigger a new tab, check all tabs/pages we have. Ensure you're working on the correct tab
-6. Document every click, type, hover, and navigation action with precise coordinates
-7. Record what you see: UI elements, text, buttons, forms, dropdowns, suggestions
-8. Capture any errors, loading states, or unexpected behavior
+3. Dismiss pop-ups, cookie banners using coordinate clicks once you see them
+4. After clicking on search, selecting hotel, or any clicking that may trigger a new tab, check all tabs/pages we have. Ensure you're working on the correct tab
+5. Document every click, type, hover, and navigation action with precise coordinates
+6. Record what you see: UI elements, text, buttons, forms, dropdowns, suggestions
+7. Capture any errors, loading states, or unexpected behavior
 
 ## What to Record:
 - **Every Interaction**: Step-by-step actions and their results
@@ -133,13 +137,11 @@ Structure for store_observation calls :
 - **What I did**: [specific action]
 - **What I observed**: [detailed findings]
 - **Screenshot**: [describe what screenshot shows]
-- **HTML Data** : [summarized data for data-heavy pages]
 
 ### Step 2: [Action]
 - **What I did**: [specific action]
 - **What I observed**: [detailed findings]
 - **Screenshot**: [describe what screenshot shows]
-- **HTML Data** : [summarized data for data-heavy pages]
 
 Continue for all testing steps...
 
@@ -169,10 +171,7 @@ These website-specific instructions override all other instructions and have abs
 
     # Execute the website feature evaluation task
     print(f"🔍 Starting recording session")
-    result = agent(feature_instruction)
+    _ = agent(feature_instruction)
 
     # Retrieve all stored observations
-    observations_text = "\n".join([f"- {obs}" for obs in observations])
-    # Return both concise result and detailed stored observations
-    combined_result = f"{str(result)}\n\n## Detailed Records:\n{observations_text}"
-    return combined_result
+    return "\n".join([f"{obs}" for obs in observations])

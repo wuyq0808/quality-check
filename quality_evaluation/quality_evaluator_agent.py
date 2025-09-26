@@ -222,32 +222,24 @@ WEBSITES = [
 def get_feature_websites(feature):
     """Get websites to test for a specific feature"""
     match feature:
-        case Feature.AUTOCOMPLETE_FOR_DESTINATIONS_HOTELS:
-            return WEBSITES
-
-        case Feature.RELEVANCE_OF_TOP_LISTINGS:
-            return WEBSITES
-
         case Feature.FIVE_PARTNERS_PER_HOTEL:
             # Only use meta-search sites that show multiple partners
             return [
                 SKYSCANNER_HOTELS,
                 GOOGLE_TRAVEL,
             ]
-
         case Feature.HERO_POSITION_PARTNER_MIX:
             # Only use meta-search sites that show multiple partners
             return [
                 SKYSCANNER_HOTELS,
                 GOOGLE_TRAVEL,
             ]
-
         case _:
-            return []
+            return WEBSITES
 
 
-def get_feature_prompt(feature, destination):
-    """Get feature prompt by name with parameterized destination"""
+def get_feature_prompt(feature, destination, checkin_date, checkout_date):
+    """Get feature prompt by name with parameterized destination and dates"""
     match feature:
         case Feature.AUTOCOMPLETE_FOR_DESTINATIONS_HOTELS:
             return f"""
@@ -270,9 +262,8 @@ Checks:
 Steps:
 1. Find the destination input,
 2. Input destination: {destination}.
-3. Select check-in: today; check-out: tomorrow.
-4. Select 2 adults, 1 room
-5. Click search, wait for result.
+3. Select check-in: {checkin_date}; check-out: {checkout_date}.
+4. Click search, wait for result.
 
 Checks:
 1. Intent Alignment Check: Verify that the top listings align with user intent (e.g. centrally located, well-reviewed, reasonably priced options appear first).
@@ -287,9 +278,8 @@ Checks:
 Steps:
 1. Find the destination input,
 2. Input destination: {destination}.
-3. Select check-in: today; check-out: tomorrow.
-4. Select 2 adults, 1 room
-5. Click search, wait for result.
+3. Select check-in: {checkin_date}; check-out: {checkout_date}.
+4. Click search, wait for result.
 
 Checks:
 1. Check 10 hotels in hotel search results to see if >= 5 partners offering rates for each hotel. Count the number of booking partners/providers shown for each of the first 10 hotels in the search results.
@@ -300,9 +290,8 @@ Checks:
 Steps:
 1. Find the destination input,
 2. Input destination: {destination}.
-3. Select check-in: today; check-out: tomorrow.
-4. Select 2 adults, 1 room
-5. Click search, wait for result.
+3. Select check-in: {checkin_date}; check-out: {checkout_date}.
+4. Click search, wait for result.
 
 Checks:
 1. Top Position Partner Variation Check: Perform multiple hotel searches and verify that the top (hero) result features a varied mix of partners over time and across queries. Document which partner appears in the top position for each search.
@@ -316,12 +305,18 @@ Checks:
 
 if __name__ == "__main__":
     import concurrent.futures
+    from datetime import datetime, timedelta
     from strands_browser_direct import evaluate_website_feature
 
     # Choose which feature to run
-    feature = Feature.FIVE_PARTNERS_PER_HOTEL
+    feature = Feature.RELEVANCE_OF_TOP_LISTINGS
 
-    feature_instruction = get_feature_prompt(feature, "Barcelona")
+    # Calculate check-in (tomorrow) and check-out (day after tomorrow) dates
+    today = datetime.now()
+    checkin_date = (today + timedelta(days=1)).strftime("%Y-%m-%d")
+    checkout_date = (today + timedelta(days=2)).strftime("%Y-%m-%d")
+
+    feature_instruction = get_feature_prompt(feature, "Barcelona", checkin_date, checkout_date)
     feature_websites = get_feature_websites(feature)
 
     # Execute evaluations sequentially

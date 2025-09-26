@@ -237,25 +237,8 @@ class CustomAgentCoreBrowser(AgentCoreBrowser):
             session = self._sessions[session_name]
             page = session.get_active_page()
 
-            # Track number of pages before click to detect new tabs
-            context = page.context
-            pages_before = len(context.pages)
-
-            # CUSTOM OVERRIDE: Click at pixel coordinates using page.mouse.click like test_browser_simple.py
             await page.mouse.click(action.x, action.y)
-
-            # Wait a moment for potential new tab to open
-            await page.wait_for_timeout(1000)
-
-            # Check if new tab/page opened
-            pages_after = context.pages
-            new_tab_id = None
-            if len(pages_after) > pages_before:
-                # New tab opened, add it to session and make it active
-                new_page = pages_after[-1]  # Last opened page
-                new_tab_id = f"tab_{len(session.tabs) + 1}"
-                session.add_tab(new_tab_id, new_page)
-                logger.info(f"New tab detected and added: {new_tab_id}")
+            logger.info(f"Clicked at coordinates ({action.x}, {action.y})")
 
             return {
                 "status": "success",
@@ -264,9 +247,7 @@ class CustomAgentCoreBrowser(AgentCoreBrowser):
                         "json": {
                             "action": "click_coordinate",
                             "coordinates": {"x": action.x, "y": action.y},
-                            "sessionName": session_name,
-                            "newTabDetected": len(pages_after) > pages_before,
-                            "newTabId": new_tab_id
+                            "sessionName": session_name
                         }
                     }
                 ],
@@ -397,6 +378,56 @@ class CustomAgentCoreBrowser(AgentCoreBrowser):
             speed_factor = 1 - abs(0.5 - t) * 0.4
             await asyncio.sleep(0.02 + speed_factor * 0.03)
 
+    async def _async_list_tabs(self, action: ListTabsAction) -> Dict[str, Any]:
+        """CUSTOM OVERRIDE: List tabs including untracked context pages"""
+        session_name = action.session_name
+
+        # Check if session exists
+        if session_name not in self._sessions:
+            return {"status": "error", "content": [{"text": f"Session '{session_name}' not found"}]}
+
+        try:
+            session = self._sessions[session_name]
+            page = session.get_active_page()
+            context = page.context
+
+            # Wait and check for new pages multiple times
+            for wait_round in range(5):  # Check 5 times over 5 seconds
+                await page.wait_for_timeout(1000)
+
+                all_pages = context.pages
+                tracked_pages = set(session.tabs.values())
+
+                # Add any untracked pages to session tabs
+                for context_page in all_pages:
+                    if context_page not in tracked_pages:
+                        try:
+                            new_title = await context_page.title()
+                            new_tab_id = new_title
+                        except Exception:
+                            new_tab_id = f"tab_{len(session.tabs) + 1}"
+
+                        session.add_tab(new_tab_id, context_page)
+                        logger.info(f"Found untracked tab: '{new_tab_id}'")
+
+            # Use original parent class logic
+            tabs_info = {}
+            for tab_id, page in session.tabs.items():
+                try:
+                    is_active = tab_id == session.active_tab_id
+                    tabs_info[tab_id] = {"url": page.url, "active": is_active}
+                except Exception as e:
+                    tabs_info[tab_id] = {"error": f"Could not retrieve tab info: {str(e)}"}
+
+            logger.info(f"Listed {len(session.tabs)} session tabs")
+
+            import json
+            return {"status": "success", "content": [{"text": json.dumps(tabs_info, indent=2)}]}
+
+        except Exception as e:
+            logger.error(f"failed to list tabs in session {session_name}: {str(e)}")
+            return {"status": "error", "content": [{"text": f"Failed to list tabs: {str(e)}"}]}
+
     async def _async_screenshot(self, action: ScreenshotAction) -> Dict[str, Any]:
         """CUSTOM OVERRIDE: Take screenshot and return base64 image data for LLM vision"""
         session_name = action.session_name
@@ -412,7 +443,7 @@ class CustomAgentCoreBrowser(AgentCoreBrowser):
             # Take PNG screenshot with timeout and skip font/animation waits
             screenshot_bytes = await page.screenshot(
                 type='png',
-                timeout=10000,  # 10 second timeout
+                timeout=15000,  # 15 second timeout
                 animations='disabled'  # Skip animation/font waits
             )
 
