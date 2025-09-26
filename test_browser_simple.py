@@ -87,33 +87,41 @@ def test_browser_session():
         # Setup Chrome Linux browser emulation
         setup_chrome_linux_browser(browser_tool, page)
 
-        print("🌐 Navigating to Skyscanner Hotels...")
-        result = browser_tool._execute_async(page.goto("https://www.skyscanner.com/hotels"))
+        print("🌐 Navigating to Google Travel...")
+        result = browser_tool._execute_async(page.goto("https://www.google.com/travel/search"))
         print(f"Navigation result: {result}")
         browser_tool._execute_async(asyncio.sleep(3))  # Wait 3 seconds
 
-        print("📸 Taking initial screenshot...")
-        browser_tool._execute_async(page.screenshot(path="test_browser_simple_screenshots/skyscanner_initial.png"))
-        print(f"Screenshot saved: test_browser_simple_screenshots/skyscanner_initial.png")
-        browser_tool._execute_async(asyncio.sleep(15))  # Wait 10 seconds
+        print("📸 Taking screenshot...")
+        browser_tool._execute_async(page.screenshot(path="test_browser_simple_screenshots/google_travel_screenshot.png"))
+        print(f"Screenshot saved: test_browser_simple_screenshots/google_travel_screenshot.png")
 
-        print("🖱️ Pressing PRESS & HOLD button at specific coordinates...")
-        # Use coordinates from the screenshot
-        x = 755
-        y = 485
-        print(f"Pressing button at coordinates: ({x}, {y})")
+        print("⏳ Waiting 10 seconds before clicking...")
+        browser_tool._execute_async(asyncio.sleep(10))
 
-        browser_tool._execute_async(page.mouse.move(x, y))
-        browser_tool._execute_async(page.mouse.down())
-        browser_tool._execute_async(asyncio.sleep(30))  # Hold duration
-        browser_tool._execute_async(page.mouse.up())
-        print("Completed press & hold action")
+        print("🖱️ Clicking cross (X) button to clear search...")
+        browser_tool._execute_async(page.mouse.click(174, 80))  # Click at X button coordinates
+        print("Cross button clicked")
 
-        browser_tool._execute_async(asyncio.sleep(120))  # Wait 5 seconds for response
+        print("⏳ Waiting 5 seconds after click...")
+        browser_tool._execute_async(asyncio.sleep(5))
 
-        print("📸 Taking final screenshot...")
-        browser_tool._execute_async(page.screenshot(path="test_browser_simple_screenshots/skyscanner_after_button.png"))
-        print(f"Final screenshot saved: test_browser_simple_screenshots/skyscanner_after_button.png")
+        # Test keyboard methods with different letters
+        print("⌨️ Testing keyboard methods...")
+
+        # Method 1: keyboard.down() and keyboard.up()
+        print("1. Using keyboard.down()/up() - typing 'M'")
+        browser_tool._execute_async(page.keyboard.down("M"))
+        browser_tool._execute_async(page.keyboard.up("M"))
+        browser_tool._execute_async(asyncio.sleep(2))
+
+        # Method 2: keyboard.press() with single letters
+        print("2. Using keyboard.press() - pressing 'N' then 'P'")
+        browser_tool._execute_async(page.keyboard.press("N"))
+        browser_tool._execute_async(page.keyboard.press("P"))
+        browser_tool._execute_async(asyncio.sleep(2))
+
+        print("Keyboard methods tested!")
 
         print("✅ Test completed successfully!")
 

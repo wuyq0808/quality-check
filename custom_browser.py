@@ -6,7 +6,7 @@ Custom AgentCore Browser that properly initializes Playwright
 from strands_tools.browser import AgentCoreBrowser
 from strands_tools.browser.models import (
     InitSessionAction, BrowserSession, BrowserInput,
-    ListLocalSessionsAction, NavigateAction, ClickAction, TypeAction,
+    ListLocalSessionsAction, NavigateAction, ClickAction,
     EvaluateAction, PressKeyAction, GetTextAction, GetHtmlAction,
     ScreenshotAction, RefreshAction, BackAction, ForwardAction,
     NewTabAction, SwitchTabAction, CloseTabAction, ListTabsAction,
@@ -53,6 +53,14 @@ class HumanMouseAction(BaseModel):
     description: Optional[str] = "Simulate human-like mouse movements and natural clicking"
 
 
+class TypeWithKeyboardAction(BaseModel):
+    """Action model for typing text using keyboard presses (no selector needed)"""
+    type: Literal["type_with_keyboard"] = "type_with_keyboard"
+    text: str  # Text to type using keyboard presses
+    session_name: str
+    description: Optional[str] = "Type text using keyboard presses"
+
+
 class CustomBrowserInput(BaseModel):
     """Extended BrowserInput with custom coordinate click action"""
     action: Union[
@@ -61,7 +69,6 @@ class CustomBrowserInput(BaseModel):
         ListLocalSessionsAction,
         NavigateAction,
         ClickAction,
-        TypeAction,
         EvaluateAction,
         PressKeyAction,
         GetTextAction,
@@ -83,6 +90,7 @@ class CustomBrowserInput(BaseModel):
         ClickCoordinateAction,
         PressAndHoldAction,
         HumanMouseAction,
+        TypeWithKeyboardAction,
     ] = Field(discriminator="type")
     wait_time: Optional[int] = Field(default=2, description="Time to wait after action in seconds")
 
@@ -204,6 +212,8 @@ class CustomAgentCoreBrowser(AgentCoreBrowser):
             return self.press_and_hold(action)
         elif isinstance(action, HumanMouseAction):
             return self.human_mouse_move(action)
+        elif isinstance(action, TypeWithKeyboardAction):
+            return self.type_with_keyboard(action)
 
         # Delegate all other actions to parent class
         # Convert back to original BrowserInput for parent compatibility
@@ -224,6 +234,10 @@ class CustomAgentCoreBrowser(AgentCoreBrowser):
     def human_mouse_move(self, action: HumanMouseAction) -> Dict[str, Any]:
         """Handle human-like mouse movements and interactions"""
         return self._execute_async(self._async_human_mouse_move(action))
+
+    def type_with_keyboard(self, action: TypeWithKeyboardAction) -> Dict[str, Any]:
+        """Handle typing with keyboard presses"""
+        return self._execute_async(self._async_type_with_keyboard(action))
 
     async def _async_click_coordinate(self, action: ClickCoordinateAction) -> Dict[str, Any]:
         """Async click at specific pixel coordinates implementation"""
@@ -465,3 +479,37 @@ class CustomAgentCoreBrowser(AgentCoreBrowser):
         except Exception as e:
             logger.error(f"failed to take screenshot in session {session_name}: {str(e)}")
             return {"status": "error", "content": [{"text": f"Failed to take screenshot: {str(e)}"}]}
+
+    async def _async_type_with_keyboard(self, action: TypeWithKeyboardAction) -> Dict[str, Any]:
+        """Async type with keyboard presses implementation"""
+        session_name = action.session_name
+        if session_name not in self._sessions:
+            return {"status": "error", "content": [{"text": f"Session '{session_name}' not found"}]}
+
+        try:
+            session = self._sessions[session_name]
+            page = session.get_active_page()
+
+            for char in action.text:
+                await page.keyboard.press(char)
+                await asyncio.sleep(0.05)  # Small delay between key presses
+
+            logger.info(f"Typed '{action.text}'")
+
+            return {
+                "status": "success",
+                "content": [
+                    {
+                        "json": {
+                            "action": "type_with_keyboard",
+                            "text": action.text,
+                            "sessionName": session_name
+                        }
+                    }
+                ],
+            }
+
+        except Exception as e:
+            logger.error(f"failed to type with keyboard in session {session_name}: {str(e)}")
+            return {"status": "error", "content": [{"text": f"Failed to type with keyboard: {str(e)}"}]}
+

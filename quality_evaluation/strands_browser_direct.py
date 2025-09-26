@@ -21,12 +21,7 @@ WEBSITE_INSTRUCTIONS = {
                       - Year is not displayed and default to the current year. Don't try to see or change the year.
 
                     # For inputting text into the search box:
-                        Before typing, don't click the search box, never click the search box, must not click the search box,
-                        Don't clear the current text in the search box. Don't click the search box or the cross sign.
-                        Must only use browser the action `'type' (description="Type text into an element")` with selector to type into it.
-                        NEVER TRY OTHER CLICKING ACTIONS, THEY CAN NOT INPUT SUCCESSFULLY FOR THIS SITE.
-                        This selector is proved to be working: input[placeholder="Search for places, hotels and more"]
-                        USE `type action (description="Type text into an element")` UNTIL YOU SUCCESS. Never clear the current search between tries.
+                      - Before typing, use click_coordinate on the cross (X) button to clear the search box.
                         
                     # For hotel partners offering counting:
                         - Skip sponsored listings. They are provide by 1 partner only.

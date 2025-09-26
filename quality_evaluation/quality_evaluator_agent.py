@@ -222,8 +222,8 @@ SKYSCANNER_HOTELS = {
 
 # Common website list for all features
 WEBSITES = [
-    GOOGLE_TRAVEL,
     SKYSCANNER_HOTELS,
+    GOOGLE_TRAVEL,
     BOOKING_COM,
     AGODA,
 ]
