@@ -20,10 +20,11 @@ class Feature(Enum):
     AUTOCOMPLETE_FOR_DESTINATIONS_HOTELS = "autocomplete_for_destinations_hotels"
     FIVE_PARTNERS_PER_HOTEL = "five_partners_per_hotel"
     HERO_POSITION_PARTNER_MIX = "hero_position_partner_mix"
+    DISTANCE_ACCURACY = "distance_accuracy"
 
 logging.basicConfig(level=logging.INFO, format='%(name)s - %(levelname)s - %(message)s')
 
-def process_and_save_result(website_key, result):
+def process_and_save_result(website_key, result, feature_key=None):
     """Process and save a single recording result"""
     import os
 
@@ -38,9 +39,12 @@ def process_and_save_result(website_key, result):
     else:
         print(f"❌ {result}")
 
-    # Save recording result to timestamped file
+    # Save recording result with feature key and timestamp in filename
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"{website_key}_recording_{timestamp}.md"
+    if feature_key:
+        filename = f"{feature_key}_{website_key}_recording_{timestamp}.md"
+    else:
+        filename = f"{website_key}_recording_{timestamp}.md"
     filepath = os.path.join(output_dir, filename)
 
     with open(filepath, "w") as f:
@@ -92,12 +96,17 @@ Polished and competitive
 Best-in-class; highly competitive
 
 ## Output Template
+# Step
+Concise summary of steps taken, general steps and differences between sites
+
 # Feature: [Feature Name Being Tested]
 | Checks   | Skyscanner | (Website 2) | (and so on) |
 |-----------|-----------------------------|-------------------------------|-------------|
 | Check 1 | 6/7 – Rationale              | 5/7 – Rationale                | (and so on) |
 | Check 2 | 6/7 – Rationale             | 5/7 – Rationale                | (and so on) |
-### Summary
+| Overall rating (last row) | 6/7 – Rationale             | 5/7 – Rationale                | (and so on) |
+
+# Summary
 - **Skyscanner**  
   - standout strengths  
   - drawbacks  
@@ -110,7 +119,7 @@ Best-in-class; highly competitive
     return agent
 
 
-def execute_website_evaluations(websites, feature_instruction):
+def execute_website_evaluations(websites, feature_instruction, feature_key=None):
     """Execute evaluations for all websites sequentially"""
     results = {}
 
@@ -135,7 +144,7 @@ def execute_website_evaluations(websites, feature_instruction):
             print(f"✅ Completed evaluation for {website_url}")
 
             # Process and save result immediately
-            process_and_save_result(website.get('key'), result)
+            process_and_save_result(website.get('key'), result, feature_key)
 
         except Exception as exc:
             print(f"❌ {website_url} generated an exception: {exc}")
@@ -143,7 +152,7 @@ def execute_website_evaluations(websites, feature_instruction):
             results[website_url] = error_result
 
             # Process and save error result immediately
-            process_and_save_result(website.get('key'), error_result)
+            process_and_save_result(website.get('key'), error_result, feature_key)
 
     return results
 
@@ -181,7 +190,7 @@ Recording Results from executing the above checks:
     os.makedirs(output_dir, exist_ok=True)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    comparison_filename = f"comparison_analysis_{timestamp}.md"
+    comparison_filename = f"{feature.value}_comparison_analysis_{timestamp}.md"
     comparison_filepath = os.path.join(output_dir, comparison_filename)
 
     with open(comparison_filepath, "w") as f:
@@ -214,9 +223,9 @@ SKYSCANNER_HOTELS = {
 # Common website list for all features
 WEBSITES = [
     GOOGLE_TRAVEL,
-    AGODA,
-    BOOKING_COM,
     SKYSCANNER_HOTELS,
+    BOOKING_COM,
+    AGODA,
 ]
 
 def get_feature_websites(feature):
@@ -280,9 +289,10 @@ Steps:
 2. Input destination: {destination}.
 3. Select check-in: {checkin_date}; check-out: {checkout_date}.
 4. Click search, wait for result.
+5. Get into first hotel details page to see partner offerings. We have partner offering displayed on the search result list, but the details page is more clearer and easier to navigate.
 
 Checks:
-1. Check 5 hotels in hotel search results to see if >= 5 partners offering rates for each hotel. Count the number of booking partners/providers shown for each of the first 5 hotels in the search results.
+1. Check first 5 hotels in hotel search results to see if >= 5 partner offering rates for each hotel. Count the number of booking partners/providers shown for each of the first 5 hotels in the search results.
             """
 
         case Feature.HERO_POSITION_PARTNER_MIX:
@@ -299,6 +309,21 @@ Checks:
 3. Fair Rotation Across Markets Check: Run hotel searches across multiple regions or cities and check if local and global partners are fairly represented in the hero position mix. (Try other cities then just {destination})
             """
 
+        case Feature.DISTANCE_ACCURACY:
+            return f"""
+Steps:
+1. Find the destination input,
+2. Input destination: {destination}.
+3. Select check-in: {checkin_date}; check-out: {checkout_date}.
+4. Click search, wait for result.
+5. Check first 5 hotels.
+
+Checks:
+1. Displayed Distance to Landmark Accuracy Check: Verify that the distance shown on each hotel card accurately reflects the straight-line or walking distance to the specified reference point (e.g. city center or user-selected landmark).
+2. Landmark Reference Accuracy Check: Check that the hotel’s distance is being measured from the correct reference point (e.g. central landmark or city center, not airport or other default).
+3. Unit of Measurement Check: Ensure that distances are displayed using the correct units (e.g. km or miles) based on user region or settings.
+            """
+
         case _:
             raise ValueError(f"Unknown feature: {feature}")
 
@@ -308,19 +333,31 @@ if __name__ == "__main__":
     from datetime import datetime, timedelta
     from strands_browser_direct import evaluate_website_feature
 
-    # Choose which feature to run
-    feature = Feature.FIVE_PARTNERS_PER_HOTEL
+    # Features to run
+    features = [
+        Feature.AUTOCOMPLETE_FOR_DESTINATIONS_HOTELS,
+        Feature.RELEVANCE_OF_TOP_LISTINGS,
+        Feature.FIVE_PARTNERS_PER_HOTEL,
+        Feature.HERO_POSITION_PARTNER_MIX,
+        Feature.DISTANCE_ACCURACY
+    ]
 
     # Calculate check-in (tomorrow) and check-out (day after tomorrow) dates
     today = datetime.now()
     checkin_date = (today + timedelta(days=1)).strftime("%Y-%m-%d")
     checkout_date = (today + timedelta(days=2)).strftime("%Y-%m-%d")
 
-    feature_instruction = get_feature_prompt(feature, "Barcelona", checkin_date, checkout_date)
-    feature_websites = get_feature_websites(feature)
+    # Loop through all features
+    for feature in features:
+        print(f"\n🚀 Starting evaluation for feature: {feature.value}")
 
-    # Execute evaluations sequentially
-    results = execute_website_evaluations(feature_websites, feature_instruction)
+        feature_instruction = get_feature_prompt(feature, "Barcelona", checkin_date, checkout_date)
+        feature_websites = get_feature_websites(feature)
 
-    # Generate comparison analysis
-    generate_feature_comparison(feature, feature_instruction, feature_websites, results)
+        # Execute evaluations sequentially
+        results = execute_website_evaluations(feature_websites, feature_instruction, feature.value)
+
+        # Generate comparison analysis
+        generate_feature_comparison(feature, feature_instruction, feature_websites, results)
+
+        print(f"✅ Completed evaluation for feature: {feature.value}")

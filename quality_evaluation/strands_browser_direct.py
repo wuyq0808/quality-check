@@ -19,26 +19,25 @@ WEBSITE_INSTRUCTIONS = {
     "google_travel_hotels": """
                     # For the calendar date picker:
                       - Year is not displayed and default to the current year. Don't try to see or change the year.
+
                     # For inputting text into the search box:
                         Before typing, don't click the search box, never click the search box, must not click the search box,
-                        Don't clear the current search. Don't click the X.
-                        Directly type into the destination search box.
-                        When you need to change the search box text, just directly type into it, never click or try to clear it first.
-                        Must only use browser "type" action(description="Type text into an element") with selector to type into it.
+                        Don't clear the current text in the search box. Don't click the search box or the cross sign.
+                        Must only use browser the action `'type' (description="Type text into an element")` with selector to type into it.
                         NEVER TRY OTHER CLICKING ACTIONS, THEY CAN NOT INPUT SUCCESSFULLY FOR THIS SITE.
                         This selector is proved to be working: input[placeholder="Search for places, hotels and more"]
-                        Try "type" action (description="Type text into an element") UNTIL YOU SUCCESS. Never clear the current search between tries.
-                        The destination input element is
-                        <input type="text" value="near Novena" jsname="yrriRe" jsaction="focus:h06R8; blur:zjh6rb" class="II2One j0Ppje zmMKJ LbIaRd" autocomplete="off" role="combobox" aria-autocomplete="inline" aria-haspopup="true" aria-expanded="false" placeholder="Search for places, hotels and more" aria-label="Search for places, hotels and more">
-                        or when clicked and has dropdown open:
-                        <input type="text" value="" jsname="yrriRe" jsaction="focus:h06R8; blur:zjh6rb" class="II2One j0Ppje zmMKJ LbIaRd" autocomplete="off" role="combobox" aria-autocomplete="both" aria-haspopup="true" aria-expanded="true" placeholder="Search for places, hotels and more" aria-label="Search for places, hotels and more" autofocus="" aria-owns="h0T7hb-9">
+                        USE `type action (description="Type text into an element")` UNTIL YOU SUCCESS. Never clear the current search between tries.
+                        
                     # For hotel partners offering counting:
                         - Skip sponsored listings. They are provide by 1 partner only.
                     """,
 
-    "booking_com": "",
+    "booking_com": """
+                    """,
 
-    "agoda_com": "Click outside of the calendar to close it if dates are correct",
+    "agoda_com": """
+                    Click outside of the calendar to close it if dates are correct
+                    """,
 
     "skyscanner_hotels": """
                     # Take snapshot right after the first navigation. You may be redirected to the page 'Are you a person or a robot'.
@@ -116,9 +115,10 @@ You must use store_observation("text") to store detailed observations on every s
 2. Use "click_coordinate" action with pixel coordinates to click elements based on visual analysis
 3. Dismiss pop-ups, cookie banners using coordinate clicks once you see them
 4. After clicking on search, selecting hotel, or any clicking that may trigger a new tab, check all tabs/pages we have. Ensure you're working on the correct tab
-5. Document every click, type, hover, and navigation action with precise coordinates
-6. Record what you see: UI elements, text, buttons, forms, dropdowns, suggestions
-7. Capture any errors, loading states, or unexpected behavior
+5. Check tab list whenever screenshot fails. Working the wrong tab leads to screenshot failure.
+6. Document every click, type, hover, and navigation action with precise coordinates
+7. Record what you see: UI elements, text, buttons, forms, dropdowns, suggestions
+8. Capture any errors, loading states, or unexpected behavior
 
 ## What to Record:
 - **Every Interaction**: Step-by-step actions and their results
