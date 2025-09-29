@@ -13,28 +13,31 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from custom_browser import CustomAgentCoreBrowser
+from constants import WebsiteKey
 
 # Website-specific instructions managed by key
 WEBSITE_INSTRUCTIONS = {
-    "google_travel_hotels": """
+    WebsiteKey.GOOGLE_TRAVEL: """
+                    # Click the hotels icon when firstly reach Travel home page
+
                     # For the calendar date picker:
                       - Year is not displayed and default to the current year. Don't try to see or change the year.
 
                     # For inputting text into the search box:
                       - Before typing, use click_coordinate on the cross (X) button to clear the search box.
-                        
+
                     # For hotel partners offering counting:
                         - Skip sponsored listings. They are provide by 1 partner only.
                     """,
 
-    "booking_com": """
+    WebsiteKey.BOOKING_COM: """
                     """,
 
-    "agoda_com": """
+    WebsiteKey.AGODA: """
                     Click outside of the calendar to close it if dates are correct
                     """,
 
-    "skyscanner_hotels": """
+    WebsiteKey.SKYSCANNER: """
                     # Take snapshot right after the first navigation. You may be redirected to the page 'Are you a person or a robot'.
                       - Don't go to elsewhere. We must resolve the challenge.
                       - Use action human_mouse_move to the button, 
@@ -113,7 +116,7 @@ You must use store_observation("text") to store detailed observations on every s
 5. Check tab list whenever screenshot fails. Working the wrong tab leads to screenshot failure.
 6. Document every click, type, hover, and navigation action with precise coordinates
 7. Record what you see: UI elements, text, buttons, forms, dropdowns, suggestions
-8. Capture any errors, loading states, or unexpected behavior
+8. Don't leave the target website, dont' go to partners site.
 
 ## What to Record:
 - **Every Interaction**: Step-by-step actions and their results

@@ -13,6 +13,7 @@ from strands import Agent
 from strands.models import BedrockModel
 from tenacity import Retrying, stop_after_attempt, wait_exponential, retry_if_exception
 from strands_browser_direct import evaluate_website_feature
+from constants import WebsiteKey, GOOGLE_TRAVEL, AGODA, BOOKING_COM, SKYSCANNER_HOTELS, WEBSITES
 
 
 class Feature(Enum):
@@ -41,10 +42,12 @@ def process_and_save_result(website_key, result, feature_key=None):
 
     # Save recording result with feature key and timestamp in filename
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    # Convert enum to string value for filename
+    website_key_str = website_key.value
     if feature_key:
-        filename = f"{feature_key}_{website_key}_recording_{timestamp}.md"
+        filename = f"{feature_key}_{website_key_str}_recording_{timestamp}.md"
     else:
-        filename = f"{website_key}_recording_{timestamp}.md"
+        filename = f"{website_key_str}_recording_{timestamp}.md"
     filepath = os.path.join(output_dir, filename)
 
     with open(filepath, "w") as f:
@@ -96,8 +99,17 @@ Polished and competitive
 Best-in-class; highly competitive
 
 ## Output Template
-# Step
-Concise summary of steps taken, general steps and differences between sites
+# Checking Steps
+## General Steps Taken
+- Destination: [e.g. Barcelona (May visit multiple cities, here for the main city)]
+- Check-in: [e.g. 2024-09-20], Check-out: [e.g. 2024-09-21]
+- [Other steps]
+
+## Differences Steps Between Sites
+- [e.g. Skyscanner has 2 separate inputs for check-in and check-out, Google Travel has a single date range picker]
+- [e.g. Booking.com requires closing a pop-up]
+
+Concise summary of steps taken, general steps and differences between sites.
 
 # Feature: [Feature Name Being Tested]
 | Checks   | Skyscanner | (Website 2) | (and so on) |
@@ -199,34 +211,6 @@ Recording Results from executing the above checks:
     print(f"📄 Comparison analysis saved to: {comparison_filepath}")
 
 
-# Individual website constants
-GOOGLE_TRAVEL = {
-    "url": "https://www.google.com/travel/search",
-    "key": "google_travel_hotels"
-}
-
-AGODA = {
-    "url": "https://www.agoda.com",
-    "key": "agoda_com"
-}
-
-BOOKING_COM = {
-    "url": "https://www.booking.com",
-    "key": "booking_com"
-}
-
-SKYSCANNER_HOTELS = {
-    "url": "https://www.skyscanner.com/hotels",
-    "key": "skyscanner_hotels"
-}
-
-# Common website list for all features
-WEBSITES = [
-    SKYSCANNER_HOTELS,
-    GOOGLE_TRAVEL,
-    BOOKING_COM,
-    AGODA,
-]
 
 def get_feature_websites(feature):
     """Get websites to test for a specific feature"""
