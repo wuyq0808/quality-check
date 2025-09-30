@@ -13,7 +13,7 @@ from strands import Agent
 from strands.models import BedrockModel
 from tenacity import Retrying, stop_after_attempt, wait_exponential, retry_if_exception
 from strands_browser_direct import evaluate_website_feature
-from constants import WebsiteKey, GOOGLE_TRAVEL, AGODA, BOOKING_COM, SKYSCANNER_HOTELS, WEBSITES
+from constants import WebsiteKey, NEXT_DAY_ONE_NIGHT, CITIES, GOOGLE_TRAVEL, AGODA, BOOKING_COM, SKYSCANNER_HOTELS, WEBSITES
 
 
 class Feature(Enum):
@@ -25,13 +25,9 @@ class Feature(Enum):
 
 logging.basicConfig(level=logging.INFO, format='%(name)s - %(levelname)s - %(message)s')
 
-def process_and_save_result(website_key, result, feature_key=None):
+def process_and_save_result(website_key, result, feature_key=None, city=None, checkin_checkout=None):
     """Process and save a single recording result"""
     import os
-
-    # Create output directory if it doesn't exist
-    output_dir = "quality_evaluation_output"
-    os.makedirs(output_dir, exist_ok=True)
 
     print(f"\n🌐 Website: {website_key}")
     print("-" * 40)
@@ -40,14 +36,17 @@ def process_and_save_result(website_key, result, feature_key=None):
     else:
         print(f"❌ {result}")
 
-    # Save recording result with feature key and timestamp in filename
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    # Convert enum to string value for filename
+    # Convert to string values for filename
     website_key_str = website_key.value
-    if feature_key:
-        filename = f"{feature_key}_{website_key_str}_recording_{timestamp}.md"
-    else:
-        filename = f"{website_key_str}_recording_{timestamp}.md"
+    checkin_checkout_str = checkin_checkout["key"]
+    city_str = city
+
+    # Create nested directory structure: quality_evaluation_output/text_recording/[feature]/[city]/[checkin_checkout]/[website]/
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_dir = os.path.join("quality_evaluation_output", "text_recording", feature_key, city_str, checkin_checkout_str, website_key_str)
+    filename = f"{timestamp}.md"
+
+    os.makedirs(output_dir, exist_ok=True)
     filepath = os.path.join(output_dir, filename)
 
     with open(filepath, "w") as f:
@@ -131,7 +130,7 @@ Concise summary of steps taken, general steps and differences between sites.
     return agent
 
 
-def execute_website_evaluations(websites, feature_instruction, feature_key=None):
+def execute_website_evaluations(websites, feature_instruction, feature_key=None, city=None, checkin_checkout=None):
     """Execute evaluations for all websites sequentially"""
     results = {}
 
@@ -156,7 +155,7 @@ def execute_website_evaluations(websites, feature_instruction, feature_key=None)
             print(f"✅ Completed evaluation for {website_url}")
 
             # Process and save result immediately
-            process_and_save_result(website.get('key'), result, feature_key)
+            process_and_save_result(website.get('key'), result, feature_key, city, checkin_checkout)
 
         except Exception as exc:
             print(f"❌ {website_url} generated an exception: {exc}")
@@ -164,12 +163,12 @@ def execute_website_evaluations(websites, feature_instruction, feature_key=None)
             results[website_url] = error_result
 
             # Process and save error result immediately
-            process_and_save_result(website.get('key'), error_result, feature_key)
+            process_and_save_result(website.get('key'), error_result, feature_key, city, checkin_checkout)
 
     return results
 
 
-def generate_feature_comparison(feature, feature_instruction, websites, results):
+def generate_feature_comparison(feature, feature_instruction, websites, results, city=None, checkin_checkout=None):
     """Generate comparison analysis using QualityEvaluator agent"""
     print("\n🤖 Generating comparison analysis...")
     evaluator = create_quality_evaluator()
@@ -196,13 +195,15 @@ Recording Results from executing the above checks:
 
     comparison_result = evaluator(comparison_prompt)
 
-    # Save comparison to file
+    # Save comparison to file with full hierarchy: feature/city/checkin_checkout
     import os
-    output_dir = "quality_evaluation_output"
+    city_str = city
+    checkin_checkout_str = checkin_checkout["key"]
+    output_dir = os.path.join("quality_evaluation_output", "comparison_analysis", feature.value, city_str, checkin_checkout_str)
     os.makedirs(output_dir, exist_ok=True)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    comparison_filename = f"{feature.value}_comparison_analysis_{timestamp}.md"
+    comparison_filename = f"{timestamp}.md"
     comparison_filepath = os.path.join(output_dir, comparison_filename)
 
     with open(comparison_filepath, "w") as f:
@@ -319,29 +320,39 @@ if __name__ == "__main__":
 
     # Features to run
     features = [
-        Feature.AUTOCOMPLETE_FOR_DESTINATIONS_HOTELS,
-        Feature.RELEVANCE_OF_TOP_LISTINGS,
+        # Feature.AUTOCOMPLETE_FOR_DESTINATIONS_HOTELS,
+        # Feature.RELEVANCE_OF_TOP_LISTINGS,
         Feature.FIVE_PARTNERS_PER_HOTEL,
         Feature.HERO_POSITION_PARTNER_MIX,
         Feature.DISTANCE_ACCURACY
     ]
 
-    # Calculate check-in (tomorrow) and check-out (day after tomorrow) dates
+    # Define checkin_checkout parameters
+    checkin_checkout = NEXT_DAY_ONE_NIGHT
+
+    # Calculate check-in and check-out dates from checkin_checkout constant
     today = datetime.now()
-    checkin_date = (today + timedelta(days=1)).strftime("%Y-%m-%d")
-    checkout_date = (today + timedelta(days=2)).strftime("%Y-%m-%d")
+    checkin_days, checkout_days = checkin_checkout["value"]
+    checkin_date = (today + timedelta(days=checkin_days)).strftime("%Y-%m-%d")
+    checkout_date = (today + timedelta(days=checkout_days)).strftime("%Y-%m-%d")
 
-    # Loop through all features
-    for feature in features:
-        print(f"\n🚀 Starting evaluation for feature: {feature.value}")
+    # Loop through all cities
+    for city in CITIES:
+        print(f"\n🏙️ Starting evaluation for city: {city}")
 
-        feature_instruction = get_feature_prompt(feature, "Barcelona", checkin_date, checkout_date)
-        feature_websites = get_feature_websites(feature)
+        # Loop through all features for each city
+        for feature in features:
+            print(f"\n🚀 Testing feature: {feature.value}")
 
-        # Execute evaluations sequentially
-        results = execute_website_evaluations(feature_websites, feature_instruction, feature.value)
+            feature_instruction = get_feature_prompt(feature, city, checkin_date, checkout_date)
+            feature_websites = get_feature_websites(feature)
 
-        # Generate comparison analysis
-        generate_feature_comparison(feature, feature_instruction, feature_websites, results)
+            # Execute evaluations sequentially
+            results = execute_website_evaluations(feature_websites, feature_instruction, feature.value, city, checkin_checkout)
 
-        print(f"✅ Completed evaluation for feature: {feature.value}")
+            # Generate comparison analysis
+            generate_feature_comparison(feature, feature_instruction, feature_websites, results, city, checkin_checkout)
+
+            print(f"✅ Completed feature: {feature.value} for city: {city}")
+
+        print(f"✅ Completed all features for city: {city}")

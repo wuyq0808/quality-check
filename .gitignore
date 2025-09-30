@@ -173,3 +173,7 @@ quality_evaluation_output/*
 .aws/
 credentials
 config
+
+# Claude Code instructions
+CLAUDE.md
+quality_evaluation/scripts/.claude

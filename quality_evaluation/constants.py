@@ -13,6 +13,20 @@ class WebsiteKey(Enum):
     SKYSCANNER = "skyscanner"
 
 
+# Checkin-Checkout constants
+NEXT_DAY_ONE_NIGHT = {
+    "key": "next_day_one_night",
+    "value": (1, 2)  # (days from today for checkin, days from today for checkout)
+}
+
+# Cities to test
+CITIES = [
+    # "London", 
+    "Tokyo", 
+    # "Dubai", "Rome", "Paris"
+    ]
+
+
 # Individual website constants
 GOOGLE_TRAVEL = {
     "url": "https://www.google.com/travel/",
